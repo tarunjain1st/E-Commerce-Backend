@@ -1,6 +1,12 @@
 package com.example.ecommerce_backend.product_catalog.controllers;
 
+import com.example.ecommerce_backend.product_catalog.dtos.CategoryDto;
+import com.example.ecommerce_backend.product_catalog.dtos.ProductDto;
 import com.example.ecommerce_backend.product_catalog.models.Product;
+import com.example.ecommerce_backend.product_catalog.services.IProductService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -9,32 +15,51 @@ import java.util.List;
 @RestController
 public class ProductController {
 
+    @Autowired
+    private IProductService productService;
+
     @GetMapping("/products")
-    public List<Product> getAllProducts() {
-        List<Product> products = new ArrayList<>();
-        Product product = new Product();
-        product.setId(1L);
-        product.setName("Product 1");
-        products.add(product);
-        return products;
+    public ResponseEntity<List<ProductDto>> getAllProducts() {
+        List<Product> products = productService.getAllProducts();
+        List<ProductDto> productDtos = new ArrayList<>();
+        for (Product product : products) {
+            productDtos.add(from(product));
+        }
+        return new ResponseEntity<>(productDtos, HttpStatus.OK);
     }
 
     @GetMapping("/products/{id}")
-    public Product getProductById(@PathVariable(name = "id") Long id) {
-        Product product = new Product();
-        product.setId(id);
-        product.setName("Product: " + id);
-        return product;
+    public ResponseEntity<ProductDto> getProductById(@PathVariable(name = "id") Long productId) {
+        if(productId <= 0){
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+        Product product = productService.getProductById(productId);
+        if (product == null) {
+            return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
+        }
+        ProductDto productDto = from(product);
+        return new ResponseEntity<>(productDto, HttpStatus.OK);
     }
 
     @PostMapping("/products")
-    public Product createProduct(@RequestBody Product product){
-        Product newProduct = new Product();
-        newProduct.setId(product.getId());
-        newProduct.setName(product.getName());
-        newProduct.setDescription(product.getDescription());
-        newProduct.setCategory(product.getCategory());
-        newProduct.setPrice(product.getPrice());
-        return newProduct   ;
+    public ProductDto createProduct(@RequestBody ProductDto request){
+        return null;
+    }
+
+    private ProductDto from(Product product) {
+        ProductDto productDto = new ProductDto();
+        productDto.setId(product.getId());
+        productDto.setName(product.getName());
+        productDto.setPrice(product.getPrice());
+        productDto.setDescription(product.getDescription());
+        productDto.setImageUrl(product.getImageUrl());
+        if(product.getCategory() != null){
+            CategoryDto categoryDto = new CategoryDto();
+            categoryDto.setId(product.getCategory().getId());
+            categoryDto.setName(product.getCategory().getName());
+            categoryDto.setDescription(product.getCategory().getDescription());
+            productDto.setCategoryDto(categoryDto);
+        }
+        return productDto;
     }
 }
