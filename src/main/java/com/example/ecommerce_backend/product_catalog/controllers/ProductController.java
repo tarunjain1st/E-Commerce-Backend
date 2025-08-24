@@ -6,6 +6,7 @@ import com.example.ecommerce_backend.product_catalog.models.Category;
 import com.example.ecommerce_backend.product_catalog.models.Product;
 import com.example.ecommerce_backend.product_catalog.services.IProductService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +18,7 @@ import java.util.List;
 public class ProductController {
 
     @Autowired
+    @Qualifier(value = "storageProductService")
     private IProductService productService;
 
     @GetMapping("/products")
@@ -74,7 +76,7 @@ public class ProductController {
             categoryDto.setId(product.getCategory().getId());
             categoryDto.setName(product.getCategory().getName());
             categoryDto.setDescription(product.getCategory().getDescription());
-            productDto.setCategoryDto(categoryDto);
+            productDto.setCategory(categoryDto);
         }
         return productDto;
     }
@@ -86,10 +88,10 @@ public class ProductController {
         product.setPrice(productDto.getPrice());
         product.setDescription(productDto.getDescription());
         product.setImageUrl(productDto.getImageUrl());
-        if(productDto.getCategoryDto() != null){
+        if(productDto.getCategory() != null){
             Category category = new Category();
-            category.setId(productDto.getCategoryDto().getId());
-            category.setName(productDto.getCategoryDto().getName());
+            category.setId(productDto.getCategory().getId());
+            category.setName(productDto.getCategory().getName());
             product.setCategory(category);
         }
         return product;
