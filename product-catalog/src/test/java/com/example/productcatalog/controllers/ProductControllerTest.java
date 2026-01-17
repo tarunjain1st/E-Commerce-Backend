@@ -4,6 +4,8 @@ import com.example.productcatalog.dtos.ProductDto;
 import com.example.productcatalog.models.Product;
 import com.example.productcatalog.services.IProductService;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,7 +15,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @SpringBootTest
 class ProductControllerTest {
@@ -24,6 +26,9 @@ class ProductControllerTest {
     @MockitoBean
     @Qualifier(value = "storageProductService")
     private IProductService productService;
+
+    @Captor
+    ArgumentCaptor<Long> idCaptor;
 
     @Test
     public void TestGetProductById_OnValidId_RunSuccessFully() {
@@ -45,6 +50,10 @@ class ProductControllerTest {
         assertEquals(productId, response.getBody().getId());
         assertEquals("Iphone", response.getBody().getName());
         assertEquals(150000D, response.getBody().getPrice());
+        verify(productService, times(1)).getProductById(productId);
+
+        verify(productService).getProductById(idCaptor.capture());
+        assertEquals(productId, idCaptor.getValue());
     }
 
     @Test
@@ -55,6 +64,8 @@ class ProductControllerTest {
         //Act & Assert
         Exception exception = assertThrows(IllegalArgumentException.class, () -> productController.getProductById(productId));
         assertEquals("Invalid product id", exception.getMessage());
+        verify(productService, times(0)).getProductById(productId);
+
     }
 
     @Test
@@ -72,7 +83,7 @@ class ProductControllerTest {
     public void TestCreateProduct_WithValidInput_RunSuccessFully() {
         //Arrange
         ProductDto productDto = new ProductDto();
-        productDto.setId(10l);
+        productDto.setId(10L);
         productDto.setName("Iphone 16");
         productDto.setPrice(150000D);
 
