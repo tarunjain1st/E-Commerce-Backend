@@ -5,9 +5,17 @@ import com.example.usermanagement.exceptions.UserAlreadySignedUpException;
 import com.example.usermanagement.exceptions.UserNotFoundException;
 import com.example.usermanagement.models.User;
 import com.example.usermanagement.repos.UserRepo;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.MacAlgorithm;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.util.Pair;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -15,6 +23,8 @@ public class AuthService implements IAuthService{
 
     @Autowired
     private UserRepo userRepo;
+    @Autowired
+    private BCryptPasswordEncoder bCryptPasswordEncoder;
 
     @Override
     public User signup(String name, String email, String password, String phoneNumber) {
@@ -25,22 +35,51 @@ public class AuthService implements IAuthService{
         User user = new User();
         user.setName(name);
         user.setEmail(email);
-        user.setPassword(password);
+        //user.setPassword(password);
+        user.setPassword(bCryptPasswordEncoder.encode(password));
         user.setPhoneNumber(phoneNumber);
         return userRepo.save(user);
     }
 
     @Override
-    public User login(String email, String password) {
+    public Pair<User, String> login(String email, String password) {
         Optional<User> userOptional = userRepo.findByEmail(email);
         if(userOptional.isEmpty()){
             throw new UserNotFoundException("Please Signup first....");
         }
+
         User user = userOptional.get();
-        if(!user.getPassword().equals(password)){
+
+        //if(!user.getPassword().equals(password)){
+
+        if(!bCryptPasswordEncoder.matches(password, user.getPassword())){
             throw new PasswordMismatchException("Please use valid password....");
         }
-        return user;
+
+        // token generation
+//        String message = "{\n" +
+//                " \"email\": \"tarun@gmail.com\",\n" +
+//                " \"roles\": [\n" +
+//                "   \"learner\"\n" +
+//                "   \"ta\"\n" +
+//                " ],\n" +
+//                " \"expiration\": \"2ndJan2026\"\n" +
+//                "}";
+//        byte[] content = message.getBytes(StandardCharsets.UTF_8);
+
+        Map<String, Object> claims = new HashMap<String, Object>();
+        claims.put("iss", "Scaler");
+        claims.put("userId", user.getId());
+        claims.put("email", user.getEmail());
+        claims.put("gen", System.currentTimeMillis());
+        claims.put("exp", System.currentTimeMillis() + 3600);
+        claims.put("access", user.getRoles());
+
+        MacAlgorithm algorithm = Jwts.SIG.HS256;
+        SecretKey secretKey = algorithm.key().build();
+        //String token = Jwts.builder().content(content).compact();
+        String token = Jwts.builder().claims(claims).signWith(secretKey).compact();
+        return Pair.of(user, token);
     }
 
     @Override
