@@ -4,6 +4,7 @@ import com.example.usermanagement.dtos.SignInRequestDto;
 import com.example.usermanagement.dtos.SignUpRequestDto;
 import com.example.usermanagement.dtos.UserDto;
 import com.example.usermanagement.dtos.ValidateTokenRequest;
+import com.example.usermanagement.exceptions.UnauthorizedException;
 import com.example.usermanagement.models.User;
 import com.example.usermanagement.services.IAuthService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,7 +47,11 @@ public class AuthController {
 
     @PostMapping("/validateToken")
     public Boolean validateToken(@RequestBody ValidateTokenRequest validateTokenRequest){
-        return null;
+        Boolean result = authService.validateToken(validateTokenRequest.getToken(), validateTokenRequest.getUserId());
+        if(!result){
+            throw new UnauthorizedException("Session expired! please login again....");
+        }
+        return true;
     }
 
     //TODO: wrapper for Logout & ForgetPassword api

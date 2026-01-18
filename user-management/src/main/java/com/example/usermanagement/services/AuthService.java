@@ -3,8 +3,13 @@ package com.example.usermanagement.services;
 import com.example.usermanagement.exceptions.PasswordMismatchException;
 import com.example.usermanagement.exceptions.UserAlreadySignedUpException;
 import com.example.usermanagement.exceptions.UserNotFoundException;
+import com.example.usermanagement.models.Status;
 import com.example.usermanagement.models.User;
+import com.example.usermanagement.models.UserSession;
+import com.example.usermanagement.repos.SessionRepo;
 import com.example.usermanagement.repos.UserRepo;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.MacAlgorithm;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +29,11 @@ public class AuthService implements IAuthService{
     @Autowired
     private UserRepo userRepo;
     @Autowired
+    private SessionRepo  sessionRepo;
+    @Autowired
     private BCryptPasswordEncoder bCryptPasswordEncoder;
+    @Autowired
+    private SecretKey secretKey;
 
     @Override
     public User signup(String name, String email, String password, String phoneNumber) {
@@ -72,18 +81,44 @@ public class AuthService implements IAuthService{
         claims.put("userId", user.getId());
         claims.put("email", user.getEmail());
         claims.put("gen", System.currentTimeMillis());
-        claims.put("exp", System.currentTimeMillis() + 3600);
+        claims.put("exp", System.currentTimeMillis() + 100000);
         claims.put("access", user.getRoles());
 
-        MacAlgorithm algorithm = Jwts.SIG.HS256;
-        SecretKey secretKey = algorithm.key().build();
-        //String token = Jwts.builder().content(content).compact();
+//        MacAlgorithm algorithm = Jwts.SIG.HS256;
+//        SecretKey secretKey = algorithm.key().build();
+//        String token = Jwts.builder().content(content).compact();
         String token = Jwts.builder().claims(claims).signWith(secretKey).compact();
+
+        UserSession userSession = new UserSession();
+        userSession.setToken(token);
+        userSession.setUser(user);
+        userSession.setStatus(Status.ACTIVE);
+        sessionRepo.save(userSession);
+
         return Pair.of(user, token);
     }
 
     @Override
     public Boolean validateToken(String token, Long userId) {
-        return null;
+        Optional<UserSession> userSessionOptional = sessionRepo.findByTokenAndUser_Id(token, userId);
+        System.out.println(userSessionOptional.isPresent());
+        if (userSessionOptional.isEmpty()){
+            return false;
+        }
+        JwtParser jwtParser = Jwts.parser().verifyWith(secretKey).build();
+        Claims claims = jwtParser.parseClaimsJws(token).getPayload();
+        Long tokenExpiry = (Long) claims.get("exp");
+        Long currentTime = System.currentTimeMillis();
+
+        System.out.println("token expiry: " + tokenExpiry);
+        System.out.println("currentTime: " + currentTime);
+
+        if (currentTime > tokenExpiry){
+            UserSession userSession = userSessionOptional.get();
+            userSession.setStatus(Status.INACTIVE);
+            sessionRepo.save(userSession);
+            return false;
+        }
+        return true;
     }
 }
