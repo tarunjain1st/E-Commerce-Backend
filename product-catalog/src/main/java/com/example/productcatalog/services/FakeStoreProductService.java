@@ -70,6 +70,11 @@ public class FakeStoreProductService implements IProductService {
         return null;
     }
 
+    @Override
+    public Product getProductBasedOnUserScope(Long productId, Long userId) {
+        return null;
+    }
+
 
     public <T> ResponseEntity<T> requestForEntity(HttpMethod httpMethod, String url, @Nullable Object request, Class<T> responseType, Object... uriVariables) throws RestClientException {
         RestTemplate restTemplate = restTemplateBuilder.build();

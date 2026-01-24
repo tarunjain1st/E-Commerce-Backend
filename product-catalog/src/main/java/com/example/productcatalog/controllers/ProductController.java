@@ -68,6 +68,12 @@ public class ProductController {
         return from(outputProduct);
     }
 
+    @GetMapping("/products/{productId}/{userId}")
+    public ProductDto getProductDetailsBasedonUserScope(@PathVariable Long productId, @PathVariable Long userId){
+        Product product = productService.getProductBasedOnUserScope(productId, userId);
+        return from(product);
+    }
+
     private ProductDto from(Product product) {
         ProductDto productDto = new ProductDto();
         productDto.setId(product.getId());
