@@ -6,6 +6,7 @@ import com.example.productcatalog.models.Category;
 import com.example.productcatalog.models.Product;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -18,14 +19,17 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
-@Service
+@Service(value = "fakeStoreProductService")
 public class FakeStoreProductService implements IProductService {
 
     @Autowired
     private RestTemplateBuilder restTemplateBuilder;
     @Autowired
     private FakeStoreApiClient fakeStoreApiClient;
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
 
     @Override
     public List<Product> getAllProducts() {
@@ -41,9 +45,21 @@ public class FakeStoreProductService implements IProductService {
 
     @Override
     public Product getProductById(Long productId) {
-        FakeStoreProductDto fakeStoreProductDto = fakeStoreApiClient.getProductById(productId);
-        if(fakeStoreProductDto == null){
-            return null;
+        String key = "product:" + productId;
+        FakeStoreProductDto fakeStoreProductDto = null;
+        fakeStoreProductDto = (FakeStoreProductDto) redisTemplate.opsForHash().get("products", productId.toString());
+        //fakeStoreProductDto = (FakeStoreProductDto) redisTemplate.opsForValue().get(key);
+        if (fakeStoreProductDto == null){
+            fakeStoreProductDto = fakeStoreApiClient.getProductById(productId);
+            if(fakeStoreProductDto == null){
+                return null;
+            }
+            System.out.println("fetched product from fake store...");
+            //redisTemplate.opsForValue().set(key, fakeStoreProductDto, 1, TimeUnit.MINUTES);
+            redisTemplate.opsForHash().put("products", productId.toString(), fakeStoreProductDto);
+            redisTemplate.expire("products", 1, TimeUnit.MINUTES);
+        }else{
+            System.out.println("fetched product from redis");
         }
         return from(fakeStoreProductDto);
     }
