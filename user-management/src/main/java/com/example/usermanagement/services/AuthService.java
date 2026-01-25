@@ -1,5 +1,7 @@
 package com.example.usermanagement.services;
 
+import com.example.usermanagement.clients.KafkaClient;
+import com.example.usermanagement.dtos.EmailDto;
 import com.example.usermanagement.exceptions.PasswordMismatchException;
 import com.example.usermanagement.exceptions.UserAlreadySignedUpException;
 import com.example.usermanagement.exceptions.UserNotFoundException;
@@ -8,6 +10,8 @@ import com.example.usermanagement.models.User;
 import com.example.usermanagement.models.UserSession;
 import com.example.usermanagement.repos.SessionRepo;
 import com.example.usermanagement.repos.UserRepo;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
@@ -34,6 +38,10 @@ public class AuthService implements IAuthService{
     private BCryptPasswordEncoder bCryptPasswordEncoder;
     @Autowired
     private SecretKey secretKey;
+    @Autowired
+    private KafkaClient kafkaClient;
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Override
     public User signup(String name, String email, String password, String phoneNumber) {
@@ -47,6 +55,18 @@ public class AuthService implements IAuthService{
         //user.setPassword(password);
         user.setPassword(bCryptPasswordEncoder.encode(password));
         user.setPhoneNumber(phoneNumber);
+
+        try {
+            EmailDto emailDto = new EmailDto();
+            emailDto.setTo(email);
+            emailDto.setFrom("tarun8work@gmail.com");
+            emailDto.setSubject("Welcome to Ecommerce app");
+            emailDto.setBody("Have a good experience");
+            kafkaClient.sendMessage("signup", objectMapper.writeValueAsString(emailDto));
+        }catch (JsonProcessingException ex){
+            throw new RuntimeException(ex.getMessage());
+        }
+
         return userRepo.save(user);
     }
 
