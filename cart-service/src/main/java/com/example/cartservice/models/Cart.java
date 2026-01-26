@@ -1,13 +1,18 @@
 package com.example.cartservice.models;
 
 import lombok.Data;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.*;
 
 @Data
-public class Cart {
-    private Long id;
+@Document(collection = "carts")
+public class Cart{
+    @Id
+    private String id;
+
     private Long userId;
-    private Date date;
-    private Map<Long,Double> products= new HashMap<>();
+
+    private List<CartItem> items = new ArrayList<>();
 }

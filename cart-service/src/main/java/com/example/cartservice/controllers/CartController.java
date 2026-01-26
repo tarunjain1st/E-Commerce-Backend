@@ -1,43 +1,52 @@
 package com.example.cartservice.controllers;
 
+import com.example.cartservice.dtos.*;
 import com.example.cartservice.models.Cart;
+import com.example.cartservice.models.CartItemData;
 import com.example.cartservice.services.ICartService;
+import com.example.cartservice.utils.CartMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/cart")
+@RequestMapping("/carts")
 public class CartController {
 
     @Autowired
     private ICartService cartService;
 
-    //Add your APIs here
-    @GetMapping("/{cartId}")
-    public Cart getCartById(@PathVariable Long cartId){
-        return cartService.getCartById(cartId);
-    }
-
     @GetMapping("/user/{userId}")
-    public List<Cart> getCartByUserId(@PathVariable Long userId){
-        return cartService.getCartByUserId(userId);
+    public CartResponseDto getCartByUserId(@PathVariable Long userId) {
+        return CartMapper.toCartResponse(cartService.getCartByUserId(userId));
     }
 
-    @DeleteMapping("/{cartId}")
-    public Cart deleteCart(@PathVariable Long cartId){
-        return cartService.deleteCartById(cartId);
+    @PostMapping("/user/{userId}/items")
+    public CartResponseDto addItem(@PathVariable Long userId,
+                                   @RequestBody CartItemRequestDto dto) {
+        CartItemData itemData = CartMapper.toCartItemData(dto);
+        Cart cart = cartService.addItemToCart(userId, itemData);
+        return CartMapper.toCartResponse(cart);
     }
 
-    @PostMapping
-    public Cart createCart(@RequestBody Cart cart){
-        return cartService.addCart(cart);
+    @PutMapping("/user/{userId}/items")
+    public CartResponseDto updateItem(@PathVariable Long userId,
+                                      @RequestBody CartItemRequestDto dto) {
+        CartItemData itemData = CartMapper.toCartItemData(dto);
+        Cart cart = cartService.updateItemInCart(userId, itemData);
+        return CartMapper.toCartResponse(cart);
     }
 
-    @PutMapping("/{cartId}")
-    public Cart updateCart(@PathVariable Long cartId, @RequestBody Cart cart){
-        return cartService.updateCart(cartId, cart);
+    @DeleteMapping("/user/{userId}/items/{productId}")
+    public CartResponseDto removeItem(@PathVariable Long userId,
+                                      @PathVariable Long productId) {
+        Cart cart = cartService.removeItemFromCart(userId, productId);
+        return CartMapper.toCartResponse(cart);
+    }
+
+    @DeleteMapping("/user/{userId}/clear")
+    public void clearCart(@PathVariable Long userId) {
+        cartService.clearCart(userId);
     }
 }
-

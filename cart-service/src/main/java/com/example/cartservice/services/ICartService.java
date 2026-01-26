@@ -1,17 +1,19 @@
 package com.example.cartservice.services;
 
 import com.example.cartservice.models.Cart;
+import com.example.cartservice.models.CartItemData;
 
 import java.util.List;
 
 public interface ICartService {
-    Cart getCartById(Long cartId);
 
-    List<Cart> getCartByUserId(Long userId);
+    Cart getCartByUserId(Long userId);
 
-    Cart deleteCartById(Long cartId);
+    Cart addItemToCart(Long userId, CartItemData item);
 
-    Cart updateCart(Long cartId, Cart request);
+    Cart updateItemInCart(Long userId, CartItemData item);
 
-    Cart addCart(Cart request);
+    Cart removeItemFromCart(Long userId, Long productId);
+
+    void clearCart(Long userId);
 }
