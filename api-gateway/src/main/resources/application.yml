@@ -1,11 +1,26 @@
 spring:
+  main:
+    web-application-type: reactive
   application:
     name: api-gateway
-  kafka:
-    bootstrap-servers: localhost:29092
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+  cloud:
+    gateway:
+      routes:
+        - id: user-management-auth
+          uri: lb://USER-MANAGEMENT
+          predicates:
+            - Path=/auth/**
+          filters:
+            - StripPrefix=0
+            # NO JWT filter here (public)
+
+        - id: user-management-users
+          uri: lb://USER-MANAGEMENT
+          predicates:
+            - Path=/users/**
+          filters:
+            - StripPrefix=0
+            # JWT REQUIRED
 server:
   port: 8080
 eureka:
