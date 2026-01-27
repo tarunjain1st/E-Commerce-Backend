@@ -3,9 +3,11 @@ package com.example.cartservice.dtos;
 import lombok.Getter;
 import lombok.Setter;
 
-@Setter
 @Getter
-public class CartItemRequestDto {
+@Setter
+public class CartItemDto {
     private Long productId;
+    private String productName;
     private Integer quantity;
+    private Double price;
 }

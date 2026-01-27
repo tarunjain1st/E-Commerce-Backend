@@ -9,7 +9,6 @@ import java.util.List;
 @Getter
 @Setter
 public class CartRequestDto {
-    private String cartId;
-    private Long userId;
-    private List<CartItemRequestDto> items;
+    private Long productId;
+    private Integer quantity;
 }

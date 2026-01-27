@@ -1,0 +1,6 @@
+spring:
+  mongodb:
+    uri: mongodb://localhost:27017/cart_service
+  data:
+    mongodb:
+      auto-index-creation: true

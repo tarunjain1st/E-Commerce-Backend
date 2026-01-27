@@ -7,4 +7,5 @@ public class CartItem {
     private Long productId;
     private String productName; // fetched from product service
     private Integer quantity;
+    private Double price;
 }

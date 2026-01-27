@@ -1,7 +1,7 @@
 package com.example.cartservice.utils;
 
-import com.example.cartservice.dtos.CartItemRequestDto;
-import com.example.cartservice.dtos.CartItemResponseDto;
+import com.example.cartservice.dtos.CartItemDto;
+import com.example.cartservice.dtos.CartRequestDto;
 import com.example.cartservice.dtos.CartResponseDto;
 import com.example.cartservice.models.Cart;
 import com.example.cartservice.models.CartItem;
@@ -13,24 +13,21 @@ import java.util.stream.Collectors;
 public class CartMapper {
 
     // --- Request DTO → Service Layer Data ---
-    public static CartItemData toCartItemData(CartItemRequestDto dto) {
+    public static CartItemData toCartItemData(CartRequestDto dto) {
         return new CartItemData(dto.getProductId(), dto.getQuantity());
     }
 
-    public static List<CartItemData> toCartItemDataList(List<CartItemRequestDto> dtos) {
-        return dtos.stream().map(CartMapper::toCartItemData).collect(Collectors.toList());
-    }
-
     // --- Entity → Response DTO ---
-    public static CartItemResponseDto toCartItemResponse(CartItem item) {
-        CartItemResponseDto dto = new CartItemResponseDto();
+    public static CartItemDto toCartItemResponse(CartItem item) {
+        CartItemDto dto = new CartItemDto();
         dto.setProductId(item.getProductId());
         dto.setProductName(item.getProductName());
+        dto.setPrice(item.getPrice());
         dto.setQuantity(item.getQuantity());
         return dto;
     }
 
-    public static List<CartItemResponseDto> toCartItemResponseList(List<CartItem> items) {
+    public static List<CartItemDto> toCartItemResponseList(List<CartItem> items) {
         return items.stream().map(CartMapper::toCartItemResponse).collect(Collectors.toList());
     }
 
@@ -39,6 +36,7 @@ public class CartMapper {
         dto.setCartId(cart.getId());
         dto.setUserId(cart.getUserId());
         dto.setItems(toCartItemResponseList(cart.getItems()));
+        dto.setTotalPrice(cart.getTotalPrice());
         return dto;
     }
 }

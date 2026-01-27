@@ -11,41 +11,41 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/carts")
+@RequestMapping("/users/{userId}/cart")
 public class CartController {
 
     @Autowired
     private ICartService cartService;
 
-    @GetMapping("/user/{userId}")
+    @GetMapping
     public CartResponseDto getCartByUserId(@PathVariable Long userId) {
         return CartMapper.toCartResponse(cartService.getCartByUserId(userId));
     }
 
-    @PostMapping("/user/{userId}/items")
+    @PostMapping("/items")
     public CartResponseDto addItem(@PathVariable Long userId,
-                                   @RequestBody CartItemRequestDto dto) {
+                                   @RequestBody CartRequestDto dto) {
         CartItemData itemData = CartMapper.toCartItemData(dto);
         Cart cart = cartService.addItemToCart(userId, itemData);
         return CartMapper.toCartResponse(cart);
     }
 
-    @PutMapping("/user/{userId}/items")
+    @PutMapping("/items")
     public CartResponseDto updateItem(@PathVariable Long userId,
-                                      @RequestBody CartItemRequestDto dto) {
+                                      @RequestBody CartRequestDto dto) {
         CartItemData itemData = CartMapper.toCartItemData(dto);
         Cart cart = cartService.updateItemInCart(userId, itemData);
         return CartMapper.toCartResponse(cart);
     }
 
-    @DeleteMapping("/user/{userId}/items/{productId}")
+    @DeleteMapping("/items/{productId}")
     public CartResponseDto removeItem(@PathVariable Long userId,
                                       @PathVariable Long productId) {
         Cart cart = cartService.removeItemFromCart(userId, productId);
         return CartMapper.toCartResponse(cart);
     }
 
-    @DeleteMapping("/user/{userId}/clear")
+    @DeleteMapping("/clear")
     public void clearCart(@PathVariable Long userId) {
         cartService.clearCart(userId);
     }

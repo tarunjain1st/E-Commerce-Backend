@@ -10,5 +10,6 @@ import java.util.List;
 public class CartResponseDto {
     private String cartId;
     private Long userId;
-    private List<CartItemResponseDto> items;
+    private List<CartItemDto> items;
+    private Double totalPrice;
 }
