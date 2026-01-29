@@ -1,15 +1,14 @@
-package com.example.payment.paymentgateways;
+package com.example.paymentservice.paymentgateways;
 
-import com.example.payment.config.RazorpayConfig;
-import com.example.payment.dtos.SessionDto;
+import com.example.paymentservice.dtos.OrderInfo;
+import com.example.paymentservice.dtos.PaymentResponse;
+import com.example.paymentservice.dtos.PaymentSession;
 import com.razorpay.PaymentLink;
 import com.razorpay.RazorpayClient;
 import com.razorpay.RazorpayException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import java.util.List;
 
 @Component
 public class RazorpayPaymentGateway implements IPaymentGateway {
@@ -47,7 +46,13 @@ public class RazorpayPaymentGateway implements IPaymentGateway {
     }
 
     @Override
-    public SessionDto createSession(String successUrl, List<Long> amounts, List<String> productNames, List<Long> quantities) {
+    public PaymentResponse createPayment(OrderInfo orderInfo) {
         return null;
     }
+
+    @Override
+    public PaymentSession getPaymentDetails(String sessionId) {
+        return null;
+    }
+
 }
