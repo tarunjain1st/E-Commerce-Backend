@@ -1,10 +1,6 @@
 package com.example.usermanagement.controllers;
 
-import com.example.usermanagement.dtos.SignInRequestDto;
-import com.example.usermanagement.dtos.SignUpRequestDto;
-import com.example.usermanagement.dtos.UserDto;
-import com.example.usermanagement.dtos.ValidateTokenRequest;
-import com.example.usermanagement.exceptions.UnauthorizedException;
+import com.example.usermanagement.dtos.*;
 import com.example.usermanagement.models.User;
 import com.example.usermanagement.services.IAuthService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,8 +8,6 @@ import org.springframework.data.util.Pair;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,40 +21,38 @@ public class AuthController {
     private IAuthService authService;
 
     @PostMapping("/signup")
-    public UserDto signUp(@RequestBody SignUpRequestDto requestDto){
-        User user = authService.signup(requestDto.getName(), requestDto.getEmail(), requestDto.getPassword() ,requestDto.getPhoneNumber());
+    public SignUpResponseDto signUp(@RequestBody SignUpRequestDto requestDto){
+        User user = authService.signup(
+                requestDto.getFirstName(),
+                requestDto.getLastName(),
+                requestDto.getEmail(),
+                requestDto.getPassword(),
+                requestDto.getPhoneNumber()
+        );
         return from(user);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<UserDto> signIn(@RequestBody SignInRequestDto requestDto){
-        Pair<User, String> response = authService.login(requestDto.getEmail(), requestDto.getPassword());
-        UserDto userDto = from(response.getFirst());
-        String token = response.getSecond();
+    public ResponseEntity<SignInResponseDto> signIn(@RequestBody SignInRequestDto requestDto){
+        Pair<Long, String> userInfo = authService.login(requestDto.getEmail(), requestDto.getPassword());
         HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.SET_COOKIE, token);
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .headers(headers)
-                .body(userDto);
-    }
-
-    @PostMapping("/validateToken")
-    public Boolean validateToken(@RequestBody ValidateTokenRequest validateTokenRequest){
-        Boolean result = authService.validateToken(validateTokenRequest.getToken(), validateTokenRequest.getUserId());
-        if(!result){
-            throw new UnauthorizedException("Session expired! please login again....");
-        }
-        return true;
+        headers.set(HttpHeaders.AUTHORIZATION, "Bearer " + userInfo.getSecond());
+        return ResponseEntity.ok().headers(headers).body(from(userInfo));
     }
 
     //TODO: wrapper for Logout & ForgetPassword api
 
-    UserDto from(User user){
-        UserDto userDto = new UserDto();
-        userDto.setId(user.getId());
-        userDto.setName(user.getName());
-        userDto.setEmail(user.getEmail());
-        return userDto;
+    SignUpResponseDto from(User user){
+        SignUpResponseDto signUpResponseDto = new SignUpResponseDto();
+        signUpResponseDto.setId(user.getId());
+        signUpResponseDto.setName(user.getFirstName() +  " " + user.getLastName());
+        signUpResponseDto.setEmail(user.getEmail());
+        return signUpResponseDto;
+    }
+    SignInResponseDto from(Pair<Long, String> userInfo){
+        SignInResponseDto signInResponseDto = new SignInResponseDto();
+        signInResponseDto.setUserId(userInfo.getFirst());
+        signInResponseDto.setAccessToken(userInfo.getSecond());
+        return signInResponseDto;
     }
 }

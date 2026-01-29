@@ -1,6 +1,6 @@
 package com.example.usermanagement.controllers;
 
-import com.example.usermanagement.dtos.UserDto;
+import com.example.usermanagement.dtos.SignUpResponseDto;
 import com.example.usermanagement.models.User;
 import com.example.usermanagement.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,16 +16,16 @@ public class UserController {
     private UserService userService;
 
     @GetMapping("/{id}")
-    public UserDto  getUser(@PathVariable Long id){
+    public SignUpResponseDto getUser(@PathVariable Long id){
         User user = userService.getUser(id);
         return from(user);
     }
 
-    private UserDto from(User user){
-        UserDto userDto = new UserDto();
-        userDto.setId(user.getId());
-        userDto.setName(user.getName());
-        userDto.setEmail(user.getEmail());
-        return userDto;
+    private SignUpResponseDto from(User user){
+        SignUpResponseDto signUpResponseDto = new SignUpResponseDto();
+        signUpResponseDto.setId(user.getId());
+        signUpResponseDto.setName(user.getFirstName() + " " + user.getLastName());
+        signUpResponseDto.setEmail(user.getEmail());
+        return signUpResponseDto;
     }
 }
