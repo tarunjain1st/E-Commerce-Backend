@@ -3,6 +3,7 @@ package com.example.notificationservice.consumers;
 import com.example.notificationservice.dtos.EmailDto;
 import com.example.notificationservice.utils.EmailUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
@@ -18,6 +19,9 @@ public class EmailConsumer {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Value("${mail.app.password}")
+    private String appPassword;
+
     @KafkaListener(topics = "signup", groupId = "notification-service-group")
 
     public void sendEmail(String message){
@@ -32,7 +36,7 @@ public class EmailConsumer {
         Authenticator auth = new Authenticator() {
             //override the getPasswordAuthentication method
             protected PasswordAuthentication getPasswordAuthentication() {
-                return new PasswordAuthentication(emailDto.getFrom(), "vhgh lqqf jsrf jhsn\n");
+                return new PasswordAuthentication(emailDto.getFrom(), appPassword);
             }
         };
         Session session = Session.getInstance(props, auth);
