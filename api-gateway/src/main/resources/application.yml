@@ -9,7 +9,7 @@ spring:
         - id: user-management-auth
           uri: lb://USER-MANAGEMENT
           predicates:
-            - Path=/auth/**
+            - Path=/api/auth/**
           filters:
             - StripPrefix=0
             # NO JWT filter here (public)
@@ -17,7 +17,39 @@ spring:
         - id: user-management-users
           uri: lb://USER-MANAGEMENT
           predicates:
-            - Path=/users/**
+            - Path=/api/users/**
+          filters:
+            - StripPrefix=0
+            # JWT REQUIRED
+
+        - id: cart-service
+          uri: lb://CART-SERVICE
+          predicates:
+            - Path=/api/carts/**
+          filters:
+            - StripPrefix=0
+            # JWT REQUIRED
+
+        - id: order-management
+          uri: lb://ORDER-MANAGEMENT
+          predicates:
+            - Path=/api/orders/**
+          filters:
+            - StripPrefix=0
+            # JWT REQUIRED
+
+        - id: payment-service
+          uri: lb://PAYMENT-SERVICE
+          predicates:
+            - Path=/api/payments/**
+          filters:
+            - StripPrefix=0
+            # JWT REQUIRED
+
+        - id: product-catalog
+          uri: lb://PRODUCT-CATALOG
+          predicates:
+            - Path=/api/products/**
           filters:
             - StripPrefix=0
             # JWT REQUIRED
