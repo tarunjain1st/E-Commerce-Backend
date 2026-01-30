@@ -9,9 +9,7 @@ import lombok.Data;
 @Data
 @Entity
 public class UserAddress extends BaseModel {
-    private String recipient_name;
-    private String line1;
-    private String line2;
+    private String street;
     private String city;
     private String state;
     private String country;
