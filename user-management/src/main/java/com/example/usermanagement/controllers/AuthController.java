@@ -8,13 +8,10 @@ import org.springframework.data.util.Pair;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/auth")
 public class AuthController {
 
     @Autowired
@@ -40,7 +37,30 @@ public class AuthController {
         return ResponseEntity.ok().headers(headers).body(from(userInfo));
     }
 
-    //TODO: wrapper for Logout & ForgetPassword api
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        authService.logout(token);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@RequestBody ForgotPasswordRequestDto requestDto) {
+        authService.forgetPassword(requestDto.getEmail());
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/reset-password/confirm")
+    public ResponseEntity<String> resetPasswordResponse(@RequestParam String token) {
+        return ResponseEntity.ok("you can use this token to reset your password: " + token);
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<Void> changePassword(@RequestBody ChangePasswordRequestDto requestDto) {
+        authService.changePassword(requestDto.getToken(), requestDto.getNewPassword());
+        return ResponseEntity.noContent().build();
+    }
+
 
     SignUpResponseDto from(User user){
         SignUpResponseDto signUpResponseDto = new SignUpResponseDto();

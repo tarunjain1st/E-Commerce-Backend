@@ -1,34 +1,34 @@
 package com.example.usermanagement.services;
 
 import com.example.usermanagement.clients.KafkaClient;
-import com.example.usermanagement.dtos.EmailDto;
+import com.example.usermanagement.events.PasswordResetEvent;
+import com.example.usermanagement.events.UserCreatedEvent;
 import com.example.usermanagement.exceptions.PasswordMismatchException;
 import com.example.usermanagement.exceptions.UserAlreadySignedUpException;
 import com.example.usermanagement.exceptions.UserNotFoundException;
-import com.example.usermanagement.models.Status;
 import com.example.usermanagement.models.User;
-import com.example.usermanagement.models.UserSession;
 import com.example.usermanagement.repos.SessionRepo;
 import com.example.usermanagement.repos.UserRepo;
 import com.example.usermanagement.security.RsaKeyProvider;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.util.Pair;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Service
-public class AuthService implements IAuthService{
+public class AuthServiceImpl implements IAuthService{
 
     @Autowired
     private UserRepo userRepo;
@@ -42,6 +42,10 @@ public class AuthService implements IAuthService{
     private ObjectMapper objectMapper;
     @Autowired
     private RsaKeyProvider rsaKeyProvider;
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+    @Autowired
+    private RestTemplate restTemplate;
 
 
     @Override
@@ -60,12 +64,10 @@ public class AuthService implements IAuthService{
         user = userRepo.save(user);
 
         try {
-            EmailDto emailDto = new EmailDto();
-            emailDto.setTo(email);
-            emailDto.setFrom("tarun8work@gmail.com");
-            emailDto.setSubject("Welcome to Ecommerce app");
-            emailDto.setBody("Have a good experience");
-            kafkaClient.sendMessage("signup", objectMapper.writeValueAsString(emailDto));
+            UserCreatedEvent userCreatedEvent = new UserCreatedEvent();
+            userCreatedEvent.setEmail(email);
+            userCreatedEvent.setName(firstName + " " + lastName);
+            kafkaClient.sendMessage("user.created", objectMapper.writeValueAsString(userCreatedEvent));
         } catch (JsonProcessingException ex){
             throw new RuntimeException(ex.getMessage());
         }
@@ -83,6 +85,61 @@ public class AuthService implements IAuthService{
         String token = generateAccessToken(user);
         return Pair.of(user.getId(), token);
     }
+
+    @Override
+    public void logout(String token) {
+
+    }
+
+    @Override
+    public void forgetPassword(String email) {
+        userRepo.findByEmail(email).ifPresent(user -> {
+            // Generate a secure random token
+            String token = UUID.randomUUID().toString();
+            String redisKey = "password-reset:" + token;
+
+            // Store userId in Redis with 10 min TTL
+            redisTemplate.opsForValue().set(redisKey, user.getId(), 10, TimeUnit.MINUTES);
+
+            // Create the reset link
+            String resetLink = "http://localhost:8086/api/auth/reset-password/confirm?token=" + token;
+
+            try {
+                PasswordResetEvent passwordResetEvent = new PasswordResetEvent();
+                passwordResetEvent.setEmail(user.getEmail());
+                passwordResetEvent.setName(user.getFirstName() + " " + user.getLastName());
+                passwordResetEvent.setResetLink(resetLink);
+
+                kafkaClient.sendMessage("user.password-reset", objectMapper.writeValueAsString(passwordResetEvent));
+            } catch (JsonProcessingException ex){
+                throw new RuntimeException(ex.getMessage());
+            }
+        });
+    }
+
+
+    @Override
+    public void changePassword(String token, String newPassword) {
+        String redisKey = "password-reset:" + token;
+
+        Object obj = redisTemplate.opsForValue().get(redisKey);
+        if (obj == null) {
+            throw new RuntimeException("Invalid or expired password reset token");
+        }
+
+        Long userId = (Long) obj;
+
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        user.setPassword(bCryptPasswordEncoder.encode(newPassword));
+        userRepo.save(user);
+
+        // Delete the token from Redis after use
+        redisTemplate.delete(redisKey);
+    }
+
+
     private String generateAccessToken(User user){
         Map<String, Object> claims = new HashMap<String, Object>();
         claims.put("email", user.getEmail());
