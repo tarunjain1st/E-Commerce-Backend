@@ -7,10 +7,10 @@ import java.util.List;
 
 @Getter
 @Setter
-public class OrderInfo {
+public class OrderDto {
     private Long orderId;
     private String customerEmail;
-    private List<CheckoutItem> items;
+    private List<OrderItemDto> items;
     public Double getTotalAmount() {
         if (items == null) return 0d;
         return items.stream()

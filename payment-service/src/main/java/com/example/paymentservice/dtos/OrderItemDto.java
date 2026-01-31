@@ -5,7 +5,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class CheckoutItem {
+public class OrderItemDto {
     private String productName;
     private Long unitAmount;
     private Long quantity;

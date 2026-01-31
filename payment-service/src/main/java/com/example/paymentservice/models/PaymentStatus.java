@@ -1,7 +1,7 @@
 package com.example.paymentservice.models;
 
 public enum PaymentStatus {
-    CREATED,
+    INITIATED,
     SUCCESS,
     FAILED
 }

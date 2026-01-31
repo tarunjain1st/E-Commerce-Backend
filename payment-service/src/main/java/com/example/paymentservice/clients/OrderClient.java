@@ -1,30 +1,25 @@
 package com.example.paymentservice.clients;
 
-import com.example.paymentservice.dtos.CheckoutItem;
-import com.example.paymentservice.dtos.OrderInfo;
+import com.example.paymentservice.dtos.OrderDto;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-
-import java.util.ArrayList;
-import java.util.List;
+import org.springframework.web.client.RestTemplate;
 
 @Component
 public class OrderClient {
-    public OrderInfo getOrder(Long orderId) {
-        OrderInfo orderInfo = new OrderInfo();
-        orderInfo.setOrderId(orderId);
-        orderInfo.setCustomerEmail("test@test.test");
-        CheckoutItem checkoutItem1 = new CheckoutItem();
-        checkoutItem1.setProductName("Nokia 3310");
-        checkoutItem1.setQuantity(2l);
-        checkoutItem1.setUnitAmount(1000l);
-        CheckoutItem checkoutItem2 = new CheckoutItem();
-        checkoutItem2.setProductName("Iphone 13");
-        checkoutItem2.setQuantity(3l);
-        checkoutItem2.setUnitAmount(100l);
-        List<CheckoutItem> checkoutItems = new ArrayList<>();
-        checkoutItems.add(checkoutItem1);
-        checkoutItems.add(checkoutItem2);
-        orderInfo.setItems(checkoutItems);
-        return orderInfo;
+
+    @Autowired
+    RestTemplate restTemplate;
+
+    public OrderDto getOrderById(Long orderId) {
+        String url = "http://order-management/api/orders/{orderId}";
+        ResponseEntity<OrderDto> response = restTemplate.getForEntity(url, OrderDto.class, orderId);
+        System.out.println(response.getBody().getOrderId());
+        if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+            throw new RuntimeException("Failed to fetch order " + orderId + " from Order Service");
+        }
+
+        return response.getBody();
     }
 }

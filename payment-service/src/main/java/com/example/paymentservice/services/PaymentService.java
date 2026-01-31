@@ -1,7 +1,7 @@
 package com.example.paymentservice.services;
 
 import com.example.paymentservice.clients.OrderClient;
-import com.example.paymentservice.dtos.OrderInfo;
+import com.example.paymentservice.dtos.OrderDto;
 import com.example.paymentservice.dtos.PaymentResponse;
 import com.example.paymentservice.dtos.PaymentSession;
 import com.example.paymentservice.models.Payment;
@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
+import java.util.Optional;
 
 @Service
 public class PaymentService implements IPaymentService{
@@ -42,21 +43,21 @@ public class PaymentService implements IPaymentService{
     public PaymentResponse createPayment(Long orderId, PaymentGateway gateway) {
 
         // Fetch order info from Order microservice
-        OrderInfo orderInfo = orderClient.getOrder(orderId);
+        OrderDto orderDto = orderClient.getOrderById(orderId);
         // Choose the payment gateway
         IPaymentGateway paymentGateway = gatewayChooser.getPaymentGateway(gateway);
         // Create Stripe session
-        PaymentResponse response = paymentGateway.createPayment(orderInfo);
+        PaymentResponse response = paymentGateway.createPayment(orderDto);
         // Save payment info
         Payment payment = new Payment();
         payment.setOrderId(orderId);
         payment.setPaymentGateway(gateway);
-        payment.setAmount(orderInfo.getTotalAmount());
-        payment.setCustomerEmail(orderInfo.getCustomerEmail());
+        payment.setAmount(orderDto.getTotalAmount());
+        payment.setCustomerEmail(orderDto.getCustomerEmail());
         payment.setPaymentReference(response.getSessionId());
         payment.setCreatedDate(new Date());
         payment.setUpdatedDate(new Date());
-        payment.setStatus(PaymentStatus.CREATED);
+        payment.setStatus(PaymentStatus.INITIATED);
         paymentRepo.save(payment);
 
         return response;
@@ -66,6 +67,12 @@ public class PaymentService implements IPaymentService{
     public Boolean verifyPaymentStatus(String sessionId, PaymentGateway gateway) {
         IPaymentGateway paymentGateway = gatewayChooser.getPaymentGateway(gateway);
         PaymentSession paymentSession = paymentGateway.getPaymentDetails(sessionId);
-        return paymentSession != null && paymentSession.getStatus().equals("paid");
+        Payment payment = paymentRepo.findPaymentByPaymentReference(paymentSession.getSessionId()).get();
+        if(paymentSession.getStatus().equals("paid")){
+            payment.setStatus(PaymentStatus.SUCCESS);
+            paymentRepo.save(payment);
+            return true;
+        }
+        return false;
     }
 }

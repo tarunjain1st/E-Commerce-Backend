@@ -1,6 +1,6 @@
 package com.example.paymentservice.paymentgateways;
 
-import com.example.paymentservice.dtos.OrderInfo;
+import com.example.paymentservice.dtos.OrderDto;
 import com.example.paymentservice.dtos.PaymentResponse;
 import com.example.paymentservice.dtos.PaymentSession;
 import com.stripe.Stripe;
@@ -75,11 +75,11 @@ public class StripePaymentGateway implements IPaymentGateway {
         }
     }
 
-    public PaymentResponse createPayment(OrderInfo orderInfo) {
+    public PaymentResponse createPayment(OrderDto orderDto) {
+        System.out.println("inside StripePaymentGateway createPayment");
         try {
             Stripe.apiKey = stripeApiKey;
-
-            List<SessionCreateParams.LineItem> lineItems = orderInfo.getItems().stream()
+            List<SessionCreateParams.LineItem> lineItems = orderDto.getItems().stream()
                     .map(item -> SessionCreateParams.LineItem.builder()
                             .setQuantity(item.getQuantity())
                             .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
@@ -99,8 +99,8 @@ public class StripePaymentGateway implements IPaymentGateway {
                     )
                     .setSuccessUrl("http://localhost:8080/api/payments/success?session_id={CHECKOUT_SESSION_ID}&gateway=STRIPE")
                     .addAllLineItem(lineItems)
-                    .setCustomerEmail(orderInfo.getCustomerEmail())
-                    .putMetadata("orderId", orderInfo.getOrderId().toString())
+                    .setCustomerEmail(orderDto.getCustomerEmail())
+                    .putMetadata("orderId", orderDto.getOrderId().toString())
                     .build();
 
             Session session = Session.create(params);

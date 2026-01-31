@@ -1,6 +1,6 @@
 package com.example.paymentservice.paymentgateways;
 
-import com.example.paymentservice.dtos.OrderInfo;
+import com.example.paymentservice.dtos.OrderDto;
 import com.example.paymentservice.dtos.PaymentResponse;
 import com.example.paymentservice.dtos.PaymentSession;
 import com.razorpay.PaymentLink;
@@ -46,7 +46,7 @@ public class RazorpayPaymentGateway implements IPaymentGateway {
     }
 
     @Override
-    public PaymentResponse createPayment(OrderInfo orderInfo) {
+    public PaymentResponse createPayment(OrderDto orderDto) {
         return null;
     }
 
