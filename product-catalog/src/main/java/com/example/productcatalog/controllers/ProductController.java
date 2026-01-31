@@ -1,7 +1,8 @@
 package com.example.productcatalog.controllers;
 
-import com.example.productcatalog.dtos.CategoryDto;
-import com.example.productcatalog.dtos.ProductDto;
+import com.example.productcatalog.dtos.CategoryResponseDto;
+import com.example.productcatalog.dtos.ProductRequestDto;
+import com.example.productcatalog.dtos.ProductResponseDto;
 import com.example.productcatalog.models.Category;
 import com.example.productcatalog.models.Product;
 import com.example.productcatalog.services.IProductService;
@@ -15,25 +16,26 @@ import java.util.ArrayList;
 import java.util.List;
 
 @RestController
+@RequestMapping("/api/products")
 public class ProductController {
 
     @Autowired
-    //@Qualifier(value = "storageProductService")
-    @Qualifier(value = "fakeStoreProductService")
+    //@Qualifier(value = "fakeStoreProductService")
+    @Qualifier(value = "storageProductService")
     private IProductService productService;
 
-    @GetMapping("/products")
-    public ResponseEntity<List<ProductDto>> getAllProducts() {
+    @GetMapping
+    public ResponseEntity<List<ProductResponseDto>> getAllProducts() {
         List<Product> products = productService.getAllProducts();
-        List<ProductDto> productDtos = new ArrayList<>();
+        List<ProductResponseDto> productResponseDtos = new ArrayList<>();
         for (Product product : products) {
-            productDtos.add(from(product));
+            productResponseDtos.add(from(product));
         }
-        return new ResponseEntity<>(productDtos, HttpStatus.OK);
+        return new ResponseEntity<>(productResponseDtos, HttpStatus.OK);
     }
 
-    @GetMapping("/products/{id}")
-    public ResponseEntity<ProductDto> getProductById(@PathVariable(name = "id") Long productId){
+    @GetMapping("/{productId}")
+    public ResponseEntity<ProductResponseDto> getProductById(@PathVariable(name = "productId") Long productId){
         if(productId < 0){
             //return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
             throw new IllegalArgumentException("Invalid product id");
@@ -46,12 +48,12 @@ public class ProductController {
         if (product == null) {
             return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
         }
-        ProductDto productDto = from(product);
-        return new ResponseEntity<>(productDto, HttpStatus.OK);
+        ProductResponseDto productResponseDto = from(product);
+        return new ResponseEntity<>(productResponseDto, HttpStatus.OK);
     }
 
-    @PostMapping("/products")
-    public ProductDto createProduct(@RequestBody ProductDto request){
+    @PostMapping
+    public ProductResponseDto createProduct(@RequestBody ProductRequestDto request){
         Product product = productService.createProduct(from(request));
         if (product == null) {
             return null;
@@ -59,50 +61,45 @@ public class ProductController {
         return from(product);
     }
 
-    @PutMapping("/products/{id}")
-    public ProductDto updateProduct(@RequestBody ProductDto request, @PathVariable Long id){
+    @PutMapping("/{productId}")
+    public ProductResponseDto updateProduct(@RequestBody ProductRequestDto request, @PathVariable Long productId){
         Product inputProduct = from(request);
-        Product outputProduct = productService.updateProduct(id, inputProduct);
+        Product outputProduct = productService.updateProduct(productId, inputProduct);
         if (outputProduct == null) {
                 return null;
         }
         return from(outputProduct);
     }
 
-    @GetMapping("/products/{productId}/{userId}")
-    public ProductDto getProductDetailsBasedonUserScope(@PathVariable Long productId, @PathVariable Long userId){
-        Product product = productService.getProductBasedOnUserScope(productId, userId);
-        return from(product);
-    }
-
-    private ProductDto from(Product product) {
-        ProductDto productDto = new ProductDto();
-        productDto.setId(product.getId());
-        productDto.setName(product.getName());
-        productDto.setPrice(product.getPrice());
-        productDto.setDescription(product.getDescription());
-        productDto.setImageUrl(product.getImageUrl());
+    private ProductResponseDto from(Product product) {
+        ProductResponseDto productResponseDto = new ProductResponseDto();
+        productResponseDto.setId(product.getId());
+        productResponseDto.setName(product.getName());
+        productResponseDto.setPrice(product.getPrice());
+        productResponseDto.setDescription(product.getDescription());
+        productResponseDto.setImageUrl(product.getImageUrl());
         if(product.getCategory() != null){
-            CategoryDto categoryDto = new CategoryDto();
-            categoryDto.setId(product.getCategory().getId());
-            categoryDto.setName(product.getCategory().getName());
-            categoryDto.setDescription(product.getCategory().getDescription());
-            productDto.setCategory(categoryDto);
+            CategoryResponseDto categoryResponseDto = new CategoryResponseDto();
+            categoryResponseDto.setId(product.getCategory().getId());
+            categoryResponseDto.setName(product.getCategory().getName());
+            categoryResponseDto.setDescription(product.getCategory().getDescription());
+            categoryResponseDto.setIsPremium(product.getCategory().getIsPremium());
+            productResponseDto.setCategory(categoryResponseDto);
         }
-        return productDto;
+        return productResponseDto;
     }
 
-    private Product from(ProductDto productDto) {
+    private Product from(ProductRequestDto productRequestDto) {
         Product product = new Product();
-        product.setId(productDto.getId());
-        product.setName(productDto.getName());
-        product.setPrice(productDto.getPrice());
-        product.setDescription(productDto.getDescription());
-        product.setImageUrl(productDto.getImageUrl());
-        if(productDto.getCategory() != null){
+        product.setName(productRequestDto.getName());
+        product.setPrice(productRequestDto.getPrice());
+        product.setDescription(productRequestDto.getDescription());
+        product.setImageUrl(productRequestDto.getImageUrl());
+        if(productRequestDto.getCategory() != null){
             Category category = new Category();
-            category.setId(productDto.getCategory().getId());
-            category.setName(productDto.getCategory().getName());
+            category.setName(productRequestDto.getCategory().getName());
+            category.setDescription(productRequestDto.getCategory().getDescription());
+            category.setIsPremium(productRequestDto.getCategory().getIsPremium());
             product.setCategory(category);
         }
         return product;

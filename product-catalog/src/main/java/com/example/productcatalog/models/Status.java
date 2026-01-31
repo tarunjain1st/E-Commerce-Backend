@@ -1,6 +1,6 @@
 package com.example.productcatalog.models;
 
-public enum State {
+public enum Status {
     ACTIVE,
     DELETE
 }

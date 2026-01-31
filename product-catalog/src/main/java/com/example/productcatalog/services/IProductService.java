@@ -11,5 +11,4 @@ public interface IProductService {
     Product getProductById(Long id);
     Product createProduct(Product product);
     Product updateProduct(Long id, Product product);
-    Product getProductBasedOnUserScope(Long productId, Long userId);
 }

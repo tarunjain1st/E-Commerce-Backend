@@ -3,10 +3,10 @@ package com.example.productcatalog.dtos;
 import lombok.Getter;
 import lombok.Setter;
 
-@Getter
 @Setter
-public class CategoryDto {
-    private Long id;
+@Getter
+public class CategoryRequestDto {
     private String name;
     private String description;
+    private Boolean isPremium;
 }

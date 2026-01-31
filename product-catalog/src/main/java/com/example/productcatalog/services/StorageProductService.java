@@ -1,6 +1,5 @@
 package com.example.productcatalog.services;
 
-import com.example.productcatalog.dtos.UserDto;
 import com.example.productcatalog.models.Product;
 import com.example.productcatalog.repos.ProductRepo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,9 +14,6 @@ public class StorageProductService implements IProductService {
 
     @Autowired
     private ProductRepo productRepo;
-
-    @Autowired
-    private RestTemplate restTemplate;
 
     @Override
     public List<Product> getAllProducts() {
@@ -43,21 +39,7 @@ public class StorageProductService implements IProductService {
     }
 
     @Override
-    public Product updateProduct(Long id, Product product) {
+    public Product updateProduct(Long productId, Product product) {
         return productRepo.save(product);
-    }
-
-    @Override
-    public Product getProductBasedOnUserScope(Long productId, Long userId) {
-        Optional<Product> productOptional = productRepo.findById(productId);
-        if (productOptional.isPresent()) {
-            //Call User Service
-            UserDto userDto = restTemplate.getForEntity("http://user-management/users/{userId}", UserDto.class, userId).getBody();
-            if (userDto != null) {
-                System.out.println(userDto.getEmail());
-                return productOptional.get();
-            }
-        }
-        return null;
     }
 }

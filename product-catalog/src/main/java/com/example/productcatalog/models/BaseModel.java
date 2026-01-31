@@ -17,12 +17,9 @@ public abstract class BaseModel {
     private Long id;
     private Date createdAt;
     private Date lastUpdatedAt;
-    @Enumerated(value = EnumType.STRING)
-    private State state;
 
     public BaseModel(){
         this.setCreatedAt(new Date());
         this.setLastUpdatedAt(new Date());
-        this.setState(State.ACTIVE);
     }
 }

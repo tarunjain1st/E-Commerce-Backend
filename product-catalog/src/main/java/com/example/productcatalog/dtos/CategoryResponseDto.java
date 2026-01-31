@@ -5,8 +5,9 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class UserDto {
+public class CategoryResponseDto {
     private Long id;
     private String name;
-    private String email;
+    private String description;
+    private Boolean isPremium;
 }
