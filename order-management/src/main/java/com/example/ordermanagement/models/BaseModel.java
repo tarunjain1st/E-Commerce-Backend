@@ -1,15 +1,15 @@
 package com.example.ordermanagement.models;
 
-import lombok.Getter;
-import lombok.Setter;
-
+import jakarta.persistence.*;
+import lombok.Data;
 import java.util.Date;
-import java.util.UUID;
 
-@Setter
-@Getter
+@Data
+@MappedSuperclass
 public abstract class BaseModel {
-    private UUID id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
     private Date createdAt;
-    private Date lastUpdatedAt;
+    private Date updatedAt;
 }

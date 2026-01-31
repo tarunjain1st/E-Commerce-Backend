@@ -2,11 +2,16 @@ package com.example.ordermanagement.services;
 
 
 import com.example.ordermanagement.models.Order;
+import com.example.ordermanagement.models.OrderAddress;
+import com.example.ordermanagement.models.OrderStatus;
 
-import java.util.UUID;
+import java.util.List;
 
 public interface IOrderService {
-    Order createOrder(Long customerId, Double totalAmount);
 
-    Boolean deleteOrder(UUID orderId);
+    List<Order> getAllOrders();
+    List<Order> getOrdersByUserId(Long userId);
+    Order getOrderById(Long orderId);
+    Order createOrder(Long userId, String customerEmail, OrderAddress deliveryAddress);
+    Order updateOrderStatus(Long orderId, OrderStatus status);
 }
