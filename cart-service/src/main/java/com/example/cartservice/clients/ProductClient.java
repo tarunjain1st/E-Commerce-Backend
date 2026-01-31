@@ -2,6 +2,8 @@ package com.example.cartservice.clients;
 
 import com.example.cartservice.dtos.ProductDto;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.Nullable;
@@ -20,11 +22,19 @@ public class ProductClient {
     private RestTemplate restTemplate;
 
     public ProductDto getProductById(Long productId){
-        ProductDto productDto = new ProductDto();
-        productDto.setId(productId);
-        productDto.setName("Iphone" + new Random().nextInt(10));
-        productDto.setPrice(new Random().nextDouble(200000));
-        return productDto;
+
+        String url = "http://product-catalog/api/products/{productId}";
+
+        try {
+            ResponseEntity<ProductDto> response = restTemplate.getForEntity(url, ProductDto.class, productId);
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                throw new RuntimeException("Failed to fetch product " + productId);
+            }
+            return response.getBody();
+        } catch (RestClientException e) {
+            throw new RuntimeException("Product Service call failed for product " + productId, e);
+        }
+
     }
     //    public ProductDto getProductById(Long productId) {
     //        //Add your implementation here

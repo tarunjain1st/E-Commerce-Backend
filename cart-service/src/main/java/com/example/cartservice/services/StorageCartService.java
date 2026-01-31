@@ -4,16 +4,19 @@ import com.example.cartservice.clients.ProductClient;
 import com.example.cartservice.dtos.ProductDto;
 import com.example.cartservice.models.Cart;
 import com.example.cartservice.models.CartItem;
-import com.example.cartservice.models.CartItemData;
 import com.example.cartservice.repos.CartRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+
 @Service
 public class StorageCartService implements ICartService {
+
+    private static final Duration CART_TTL = Duration.ofHours(1); // TTL as per PRD (can be configured)
 
     @Autowired
     private CartRepository cartRepository;
@@ -21,65 +24,71 @@ public class StorageCartService implements ICartService {
     @Autowired
     private ProductClient productClient;
 
-    @Override
-    public Cart getCartByUserId(Long userId) {
-        return cartRepository.findByUserId(userId)
-                .orElseGet(() -> {
-                    Cart cart = new Cart();
-                    cart.setUserId(userId);
-                    cart.setItems(new ArrayList<>());
-                    cart.setTotalPrice(0.0);
-                    return cartRepository.save(cart);
-                });
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+
+    private String redisKey(Long userId) {
+        return "cart:" + userId;
     }
 
     @Override
-    public Cart addItemToCart(Long userId, CartItemData item) {
+    public Cart getCartByUserId(Long userId) {
+
+        ValueOperations<String, Object> ops = redisTemplate.opsForValue();
+        String key = redisKey(userId);
+
+        // Check Redis cache first
+        Cart cart = (Cart) ops.get(key);
+        if (cart != null) return cart;
+
+        // Fallback to MongoDB
+        cart = cartRepository.findByUserId(userId)
+                .orElseGet(() -> {
+                    Cart newCart = new Cart();
+                    newCart.setUserId(userId);
+                    newCart.setItems(new ArrayList<>());
+                    newCart.setTotalPrice(0.0);
+                    return cartRepository.save(newCart);
+                });
+
+        // Cache in Redis with TTL
+        ops.set(key, cart, CART_TTL);
+
+        return cart;
+    }
+
+    @Override
+    public Cart addItemToCart(Long userId, Long productId, Integer quantity) {
 
         Cart cart = getCartByUserId(userId);
 
-        ProductDto product = productClient.getProductById(item.getProductId());
+        ProductDto product = productClient.getProductById(productId);
 
         CartItem cartItem = cart.getItems().stream()
-                .filter(ci -> ci.getProductId().equals(item.getProductId()))
+                .filter(ci -> ci.getProductId().equals(productId))
                 .findFirst()
                 .orElse(null);
 
         if (cartItem != null) {
-            cartItem.setQuantity(cartItem.getQuantity() + item.getQuantity());
+            cartItem.setQuantity(cartItem.getQuantity() + quantity);
         } else {
             cartItem = new CartItem();
             cartItem.setProductId(product.getId());
             cartItem.setProductName(product.getName());
             cartItem.setPrice(product.getPrice());
-            cartItem.setQuantity(item.getQuantity());
+            cartItem.setQuantity(quantity);
             cart.getItems().add(cartItem);
         }
 
         recalculateTotal(cart);
-        return cartRepository.save(cart);
-    }
 
-    @Override
-    public Cart updateItemInCart(Long userId, CartItemData item) {
+        // Persist to MongoDB
+        cartRepository.save(cart);
 
-        Cart cart = getCartByUserId(userId);
+        // Update Redis cache with TTL
+        redisTemplate.opsForValue().set(redisKey(userId), cart, CART_TTL);
 
-        CartItem cartItem = cart.getItems().stream()
-                .filter(ci -> ci.getProductId().equals(item.getProductId()))
-                .findFirst()
-                .orElseThrow(() ->
-                        new RuntimeException("Product not found in cart")
-                );
-
-        if (item.getQuantity() <= 0) {
-            cart.getItems().remove(cartItem);
-        } else {
-            cartItem.setQuantity(item.getQuantity());
-        }
-
-        recalculateTotal(cart);
-        return cartRepository.save(cart);
+        return cart;
     }
 
     @Override
@@ -87,15 +96,16 @@ public class StorageCartService implements ICartService {
 
         Cart cart = getCartByUserId(userId);
 
-        boolean removed = cart.getItems()
-                .removeIf(ci -> ci.getProductId().equals(productId));
-
-        if (!removed) {
-            throw new RuntimeException("Product not found in cart");
-        }
+        boolean removed = cart.getItems().removeIf(ci -> ci.getProductId().equals(productId));
+        if (!removed) throw new RuntimeException("Product not found in cart");
 
         recalculateTotal(cart);
-        return cartRepository.save(cart);
+
+        // Persist & cache
+        cartRepository.save(cart);
+        redisTemplate.opsForValue().set(redisKey(userId), cart, CART_TTL);
+
+        return cart;
     }
 
     @Override
@@ -104,7 +114,31 @@ public class StorageCartService implements ICartService {
         Cart cart = getCartByUserId(userId);
         cart.getItems().clear();
         cart.setTotalPrice(0.0);
+
+        // Persist & cache
         cartRepository.save(cart);
+        redisTemplate.opsForValue().set(redisKey(userId), cart, CART_TTL);
+    }
+
+    @Override
+    public Cart checkoutCart(Long userId) {
+        Cart cart = getCartByUserId(userId);
+
+        if (cart.getItems().isEmpty()) {
+            throw new RuntimeException("Cannot checkout an empty cart");
+        }
+
+        // Create a snapshot (read-only) to return
+        Cart checkoutSnapshot = new Cart();
+        checkoutSnapshot.setId(cart.getId());
+        checkoutSnapshot.setUserId(cart.getUserId());
+        checkoutSnapshot.setItems(new ArrayList<>(cart.getItems()));
+        checkoutSnapshot.setTotalPrice(cart.getTotalPrice());
+
+        // Clear the original cart for the user
+        clearCart(userId);
+
+        return checkoutSnapshot;
     }
 
     /* ================= helper ================= */

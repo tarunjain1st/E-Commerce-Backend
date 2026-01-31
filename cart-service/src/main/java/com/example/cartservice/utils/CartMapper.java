@@ -5,17 +5,11 @@ import com.example.cartservice.dtos.CartRequestDto;
 import com.example.cartservice.dtos.CartResponseDto;
 import com.example.cartservice.models.Cart;
 import com.example.cartservice.models.CartItem;
-import com.example.cartservice.models.CartItemData;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class CartMapper {
-
-    // --- Request DTO → Service Layer Data ---
-    public static CartItemData toCartItemData(CartRequestDto dto) {
-        return new CartItemData(dto.getProductId(), dto.getQuantity());
-    }
 
     // --- Entity → Response DTO ---
     public static CartItemDto toCartItemResponse(CartItem item) {
