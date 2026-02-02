@@ -8,5 +8,6 @@ import java.util.Optional;
 
 @Repository
 public interface PaymentRepo extends JpaRepository<Payment, Long> {
-    Optional<Payment> findPaymentByPaymentReference(String paymentReference);
+    Optional<Payment> findByPaymentReference(String paymentReference);
+    boolean existsByPaymentReference(String paymentReference);
 }

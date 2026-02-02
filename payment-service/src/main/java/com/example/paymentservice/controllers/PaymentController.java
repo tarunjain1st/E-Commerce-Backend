@@ -49,13 +49,6 @@ public class PaymentController {
             @RequestParam("session_id") String sessionId,
             @RequestParam("gateway") PaymentGateway gateway) { // Specify gateway in request
 
-        boolean paid = paymentService.verifyPaymentStatus(sessionId, gateway);
-
-        if (paid) {
-            return ResponseEntity.ok("Payment successful! Thank you for your order.");
-        } else {
-            return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
-                    .body("Payment failed or incomplete. Please try again.");
-        }
+        return ResponseEntity.ok("Thanks you for making the order !");
     }
 }

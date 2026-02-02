@@ -6,7 +6,13 @@ import lombok.Data;
 import java.util.Date;
 
 @Data
-@Entity(name = "payments")
+@Entity
+@Table(
+        name = "payments",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"payment_reference"})
+        }
+)
 public class Payment {
 
     @Id
@@ -14,6 +20,7 @@ public class Payment {
     private Long id;
 
     private Long orderId;
+    @Column(name = "payment_reference", nullable = false, unique = true)
     private String paymentReference; // Stripe session or PaymentIntent ID
 
     @Enumerated(EnumType.STRING)

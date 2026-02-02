@@ -3,11 +3,14 @@ package com.example.paymentservice.paymentgateways;
 import com.example.paymentservice.dtos.OrderDto;
 import com.example.paymentservice.dtos.PaymentResponse;
 import com.example.paymentservice.dtos.PaymentSession;
+import com.example.paymentservice.dtos.PaymentWebhookResponse;
+import com.example.paymentservice.models.Payment;
+import com.example.paymentservice.models.PaymentStatus;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
-import com.stripe.model.PaymentLink;
-import com.stripe.model.Price;
+import com.stripe.model.*;
 import com.stripe.model.checkout.Session;
+import com.stripe.net.Webhook;
 import com.stripe.param.PaymentLinkCreateParams;
 import com.stripe.param.PriceCreateParams;
 import com.stripe.param.checkout.SessionCreateParams;
@@ -16,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Component
@@ -23,6 +27,9 @@ public class StripePaymentGateway implements IPaymentGateway {
 
     @Value("${stripe.apiKey}")
     private String stripeApiKey;
+
+    @Value("${stripe.webhook.secret}")
+    private String webhookSecret;
 
 
     private Price createPrice(Long amount, String productName){
@@ -125,6 +132,36 @@ public class StripePaymentGateway implements IPaymentGateway {
             throw new RuntimeException("Failed to fetch Stripe session: " + e.getMessage(), e);
         }
     }
+
+    @Override
+    public PaymentWebhookResponse parseWebhook(String payload, Map<String, String> headers) {
+        try {
+            Event event = Webhook.constructEvent(payload, headers.get("Stripe-Signature"), webhookSecret);
+
+            if ("checkout.session.completed".equals(event.getType())) {
+                EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
+                StripeObject stripeObject = deserializer.getObject().orElse(null);
+
+                System.out.println("before object"+stripeObject);
+                if (stripeObject == null) {
+                    // Fallback: deserialize manually
+                    stripeObject = deserializer.deserializeUnsafe();
+                }
+                System.out.println("after object"+stripeObject);
+
+                Session session = (Session) stripeObject;
+
+                PaymentWebhookResponse result = new PaymentWebhookResponse();
+                result.setPaymentReference(session.getId());
+                result.setStatus(PaymentStatus.SUCCESS);
+                return result;
+            }
+        } catch (StripeException e) {
+            throw new RuntimeException("Stripe webhook failed: " + e.getMessage(), e);
+        }
+        return null;
+    }
+
 
     private static PaymentSession getPaymentSession(Session session) {
         PaymentSession paymentSession = new PaymentSession();

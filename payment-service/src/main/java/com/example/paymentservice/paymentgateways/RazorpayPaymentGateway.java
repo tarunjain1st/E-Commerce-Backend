@@ -3,12 +3,15 @@ package com.example.paymentservice.paymentgateways;
 import com.example.paymentservice.dtos.OrderDto;
 import com.example.paymentservice.dtos.PaymentResponse;
 import com.example.paymentservice.dtos.PaymentSession;
+import com.example.paymentservice.dtos.PaymentWebhookResponse;
 import com.razorpay.PaymentLink;
 import com.razorpay.RazorpayClient;
 import com.razorpay.RazorpayException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.util.Map;
 
 @Component
 public class RazorpayPaymentGateway implements IPaymentGateway {
@@ -52,6 +55,16 @@ public class RazorpayPaymentGateway implements IPaymentGateway {
 
     @Override
     public PaymentSession getPaymentDetails(String sessionId) {
+        return null;
+    }
+
+    @Override
+    public PaymentWebhookResponse parseWebhook(String payload, Map<String, String> headers) {
+        // 1. Verify Razorpay signature
+        // 2. Parse payment_id / order_id
+        // 3. paymentRepo.findByPaymentReference(...)
+        // 4. payment.setStatus(SUCCESS)
+        // 5. paymentRepo.save(payment)
         return null;
     }
 
