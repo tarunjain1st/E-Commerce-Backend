@@ -29,13 +29,11 @@ public class PaymentController {
 
     @PostMapping("/checkout")
     public ResponseEntity<PaymentResponseDto> createPayment(@RequestBody PaymentRequestDto requestDto) {
-        System.out.println("inside createPayment");
         // Call service to create payment and Stripe session
         PaymentResponse response = paymentService.createPayment(
                 requestDto.getOrderId(),
                 requestDto.getPaymentGateway()
         );
-        System.out.println("after payment response");
         // Map to controller response DTO
         PaymentResponseDto responseDto = new PaymentResponseDto();
         responseDto.setSessionId(response.getSessionId());

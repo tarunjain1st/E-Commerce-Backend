@@ -6,6 +6,8 @@ import com.example.paymentservice.dtos.OrderDto;
 import com.example.paymentservice.dtos.PaymentResponse;
 import com.example.paymentservice.dtos.PaymentSession;
 import com.example.paymentservice.dtos.PaymentWebhookResponse;
+import com.example.paymentservice.events.PaymentFailureEvent;
+import com.example.paymentservice.events.PaymentInitiatedEvent;
 import com.example.paymentservice.events.PaymentSuccessEvent;
 import com.example.paymentservice.models.Payment;
 import com.example.paymentservice.models.PaymentGateway;
@@ -62,13 +64,20 @@ public class PaymentService implements IPaymentService{
         payment.setOrderId(orderId);
         payment.setPaymentGateway(gateway);
         payment.setAmount(orderDto.getTotalAmount());
+        payment.setCustomerName(orderDto.getCustomerName());
         payment.setCustomerEmail(orderDto.getCustomerEmail());
         payment.setPaymentReference(response.getSessionId());
         payment.setCreatedDate(new Date());
         payment.setUpdatedDate(new Date());
         payment.setStatus(PaymentStatus.INITIATED);
         paymentRepo.save(payment);
-        //kafkaClient.sendMessage("payment.initiated", objectMapper.writeValueAsString(orderPlacedEvent));
+        try {
+            PaymentInitiatedEvent event = new PaymentInitiatedEvent();
+            event.setOrderId(payment.getOrderId());
+            kafkaClient.sendMessage("payment.initiated", objectMapper.writeValueAsString(event));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
         return response;
     }
 
@@ -109,16 +118,23 @@ public class PaymentService implements IPaymentService{
         if (paymentWebhookResponse.getStatus() == PaymentStatus.SUCCESS) {
             try {
                 PaymentSuccessEvent paymentSuccessEvent = new PaymentSuccessEvent();
+                paymentSuccessEvent.setOrderId(payment.getOrderId());
                 paymentSuccessEvent.setPaymentId(payment.getPaymentReference());
                 paymentSuccessEvent.setEmail(payment.getCustomerEmail());
                 paymentSuccessEvent.setAmount(payment.getAmount());
-                paymentSuccessEvent.setName(payment.getCustomerEmail());
+                paymentSuccessEvent.setName(payment.getCustomerName());
                 kafkaClient.sendMessage("payment.success", objectMapper.writeValueAsString(paymentSuccessEvent));
             } catch (JsonProcessingException e) {
                 throw new RuntimeException(e);
             }
         } else if (paymentWebhookResponse.getStatus() == PaymentStatus.FAILED) {
-            //kafkaClient.sendMessage("payment.failure", objectMapper.writeValueAsString(orderPlacedEvent));
+            try {
+                PaymentFailureEvent event = new PaymentFailureEvent();
+                event.setOrderId(payment.getOrderId());
+                kafkaClient.sendMessage("payment.failure", objectMapper.writeValueAsString(event));
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 }

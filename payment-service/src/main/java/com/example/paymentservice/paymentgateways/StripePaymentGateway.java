@@ -105,6 +105,7 @@ public class StripePaymentGateway implements IPaymentGateway {
                             SessionCreateParams.BillingAddressCollection.REQUIRED
                     )
                     .setSuccessUrl("http://localhost:8080/api/payments/success?session_id={CHECKOUT_SESSION_ID}&gateway=STRIPE")
+                    .setCancelUrl("http://localhost:8080/api/payments/cancel?session_id={CHECKOUT_SESSION_ID}")
                     .addAllLineItem(lineItems)
                     .setCustomerEmail(orderDto.getCustomerEmail())
                     .putMetadata("orderId", orderDto.getOrderId().toString())
@@ -136,31 +137,60 @@ public class StripePaymentGateway implements IPaymentGateway {
     @Override
     public PaymentWebhookResponse parseWebhook(String payload, Map<String, String> headers) {
         try {
-            Event event = Webhook.constructEvent(payload, headers.get("Stripe-Signature"), webhookSecret);
+            Event event = Webhook.constructEvent(
+                    payload,
+                    headers.get("Stripe-Signature"),
+                    webhookSecret
+            );
 
-            if ("checkout.session.completed".equals(event.getType())) {
-                EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
-                StripeObject stripeObject = deserializer.getObject().orElse(null);
+            EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
+            StripeObject stripeObject = deserializer.getObject().orElse(null);
 
-                System.out.println("before object"+stripeObject);
-                if (stripeObject == null) {
-                    // Fallback: deserialize manually
-                    stripeObject = deserializer.deserializeUnsafe();
-                }
-                System.out.println("after object"+stripeObject);
-
-                Session session = (Session) stripeObject;
-
-                PaymentWebhookResponse result = new PaymentWebhookResponse();
-                result.setPaymentReference(session.getId());
-                result.setStatus(PaymentStatus.SUCCESS);
-                return result;
+            if (stripeObject == null) {
+                stripeObject = deserializer.deserializeUnsafe();
             }
+
+            PaymentWebhookResponse result = new PaymentWebhookResponse();
+            switch (event.getType()) {
+                // PAYMENT SUCCESS
+                case "checkout.session.completed" -> {
+                    Session session = (Session) stripeObject;
+
+                    result.setPaymentReference(session.getId());
+                    result.setStatus(PaymentStatus.SUCCESS);
+                    return result;
+                }
+
+                // PAYMENT FAILED, not working due to checkout-session
+//                case "payment_intent.payment_failed" -> {
+//                    PaymentIntent intent = (PaymentIntent) stripeObject;
+//                    result.setPaymentReference(intent.getId());
+//                    result.setStatus(PaymentStatus.FAILED);
+//                    result.setFailureReason("Payment failed at Stripe");
+//                    return result;
+//                }
+
+                // SESSION EXPIRED
+                case "checkout.session.expired" -> {
+                    Session session = (Session) stripeObject;
+
+                    result.setPaymentReference(session.getId());
+                    result.setStatus(PaymentStatus.EXPIRED);
+                    return result;
+                }
+
+
+                default -> {
+                    // ignore unrelated events safely
+                    return null;
+                }
+            }
+
         } catch (StripeException e) {
-            throw new RuntimeException("Stripe webhook failed: " + e.getMessage(), e);
+            throw new RuntimeException("Stripe webhook verification failed", e);
         }
-        return null;
     }
+
 
 
     private static PaymentSession getPaymentSession(Session session) {

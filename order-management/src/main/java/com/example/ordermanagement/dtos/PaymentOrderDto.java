@@ -11,5 +11,6 @@ public class PaymentOrderDto {
     private Long orderId;
     private String customerEmail;
     private Double totalAmount;
+    private String customerName;
     private List<PaymentOrderItemDto> items;
 }

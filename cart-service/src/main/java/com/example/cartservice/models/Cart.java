@@ -17,6 +17,7 @@ public class Cart{
     private Long userId;
     private Double totalPrice;
     private List<CartItem> items = new ArrayList<>();
+    private CartStatus status;
     @CreatedDate
     private Date creationDate;
     @LastModifiedDate

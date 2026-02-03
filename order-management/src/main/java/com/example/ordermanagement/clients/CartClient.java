@@ -21,7 +21,7 @@ public class CartClient {
 
         public CartDto getCartByUserId(Long userId) {
             //Add your implementation here
-            String url = "http://cart-service/api/carts/checkout";
+            String url = "http://cart-service/api/carts";
             HttpHeaders httpHeaders = new HttpHeaders();
             httpHeaders.set("X-User-Id", userId.toString());
             httpHeaders.set("X-Internal-Call", "true");
@@ -30,7 +30,7 @@ public class CartClient {
             ResponseEntity<CartDto> responseEntity =
                     restTemplate.exchange(
                             url,
-                            HttpMethod.POST,
+                            HttpMethod.GET,
                             entity,
                             CartDto.class
                     );

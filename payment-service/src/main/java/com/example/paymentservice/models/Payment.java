@@ -30,6 +30,7 @@ public class Payment {
     private PaymentStatus status;
 
     private Double amount; // in cents
+    private String customerName;
     private String customerEmail;
 
     private Date createdDate;

@@ -10,6 +10,7 @@ import java.util.List;
 public class OrderDto {
     private Long orderId;
     private String customerEmail;
+    private String customerName;
     private List<OrderItemDto> items;
     public Double getTotalAmount() {
         if (items == null) return 0d;

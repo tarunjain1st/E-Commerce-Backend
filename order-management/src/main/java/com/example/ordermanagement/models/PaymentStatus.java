@@ -2,7 +2,7 @@ package com.example.ordermanagement.models;
 
 public enum PaymentStatus {
     PENDING,
-    SUCCESS,
+    COMPLETED,
     FAILED,
     INITIATED
 }

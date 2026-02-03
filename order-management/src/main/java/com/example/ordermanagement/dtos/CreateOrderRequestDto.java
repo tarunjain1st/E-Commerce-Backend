@@ -10,6 +10,7 @@ import java.util.List;
 public class CreateOrderRequestDto {
     private Long userId;
     private String customerEmail;
+    private String customerName;
     private OrderAddressDto deliveryAddress;
 }
 

@@ -16,6 +16,7 @@ public class Order extends BaseModel {
     private Long userId;
     private Double totalAmount;
     private String customerEmail;
+    private String customerName;
 
     @Enumerated(EnumType.STRING)
     private OrderStatus status;

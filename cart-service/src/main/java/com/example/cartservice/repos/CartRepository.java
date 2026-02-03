@@ -2,6 +2,7 @@ package com.example.cartservice.repos;
 
 
 import com.example.cartservice.models.Cart;
+import com.example.cartservice.models.CartStatus;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
@@ -11,5 +12,5 @@ import java.util.Optional;
 public interface CartRepository extends MongoRepository<Cart, String> {
 
     Optional<Cart> findByUserId(Long userId);
-    Boolean deleteByUserId(Long userId);
+    Optional<Cart> findByUserIdAndStatus(Long userId, CartStatus status);
 }

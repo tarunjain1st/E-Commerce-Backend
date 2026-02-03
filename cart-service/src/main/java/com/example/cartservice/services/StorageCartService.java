@@ -4,6 +4,7 @@ import com.example.cartservice.clients.ProductClient;
 import com.example.cartservice.dtos.ProductDto;
 import com.example.cartservice.models.Cart;
 import com.example.cartservice.models.CartItem;
+import com.example.cartservice.models.CartStatus;
 import com.example.cartservice.repos.CartRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Optional;
 
 @Service
 public class StorageCartService implements ICartService {
@@ -32,7 +34,7 @@ public class StorageCartService implements ICartService {
     }
 
     @Override
-    public Cart getCartByUserId(Long userId) {
+    public Cart getActiveCart(Long userId) {
 
         ValueOperations<String, Object> ops = redisTemplate.opsForValue();
         String key = redisKey(userId);
@@ -42,12 +44,13 @@ public class StorageCartService implements ICartService {
         if (cart != null) return cart;
 
         // Fallback to MongoDB
-        cart = cartRepository.findByUserId(userId)
+        cart = cartRepository.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
                 .orElseGet(() -> {
                     Cart newCart = new Cart();
                     newCart.setUserId(userId);
                     newCart.setItems(new ArrayList<>());
                     newCart.setTotalPrice(0.0);
+                    newCart.setStatus(CartStatus.ACTIVE);
                     return cartRepository.save(newCart);
                 });
 
@@ -60,7 +63,7 @@ public class StorageCartService implements ICartService {
     @Override
     public Cart addItemToCart(Long userId, Long productId, Integer quantity) {
 
-        Cart cart = getCartByUserId(userId);
+        Cart cart = getActiveCart(userId);
 
         ProductDto product = productClient.getProductById(productId);
 
@@ -94,7 +97,7 @@ public class StorageCartService implements ICartService {
     @Override
     public Cart removeItemFromCart(Long userId, Long productId) {
 
-        Cart cart = getCartByUserId(userId);
+        Cart cart = getActiveCart(userId);
 
         boolean removed = cart.getItems().removeIf(ci -> ci.getProductId().equals(productId));
         if (!removed) throw new RuntimeException("Product not found in cart");
@@ -111,7 +114,7 @@ public class StorageCartService implements ICartService {
     @Override
     public void clearCart(Long userId) {
 
-        Cart cart = getCartByUserId(userId);
+        Cart cart = getActiveCart(userId);
         cart.getItems().clear();
         cart.setTotalPrice(0.0);
 
@@ -120,27 +123,19 @@ public class StorageCartService implements ICartService {
         redisTemplate.opsForValue().set(redisKey(userId), cart, CART_TTL);
     }
 
-    @Override
-    public Cart checkoutCart(Long userId) {
-        Cart cart = getCartByUserId(userId);
-
-        if (cart.getItems().isEmpty()) {
-            throw new RuntimeException("Cannot checkout an empty cart");
+    public void handleOrderConfirmed(Long userId) {
+        Optional<Cart> cartOptional = cartRepository.findByUserIdAndStatus(userId, CartStatus.ACTIVE);
+        if (cartOptional.isEmpty()) {
+            return; // idempotent handling
         }
 
-        // Create a snapshot (read-only) to return
-        Cart checkoutSnapshot = new Cart();
-        checkoutSnapshot.setId(cart.getId());
-        checkoutSnapshot.setUserId(cart.getUserId());
-        checkoutSnapshot.setItems(new ArrayList<>(cart.getItems()));
-        checkoutSnapshot.setTotalPrice(cart.getTotalPrice());
+        Cart cart = cartOptional.get();
 
-        // Clear the original cart for the user
-        clearCart(userId);
-
-        return checkoutSnapshot;
+        cart.setStatus(CartStatus.CHECKED_OUT);
+        //cart.getItems().clear();
+        cartRepository.save(cart);
+        redisTemplate.delete(redisKey(userId));
     }
-
     /* ================= helper ================= */
 
     private void recalculateTotal(Cart cart) {
@@ -149,4 +144,5 @@ public class StorageCartService implements ICartService {
                 .sum();
         cart.setTotalPrice(total);
     }
+
 }

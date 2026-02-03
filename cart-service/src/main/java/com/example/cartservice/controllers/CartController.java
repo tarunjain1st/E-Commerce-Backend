@@ -17,7 +17,7 @@ public class CartController {
 
     @GetMapping
     public CartResponseDto getCartByUserId(@RequestHeader("X-User-Id") Long userId) {
-        return CartMapper.toCartResponse(cartService.getCartByUserId(userId));
+        return CartMapper.toCartResponse(cartService.getActiveCart(userId));
     }
 
     @PostMapping("/items")
@@ -35,11 +35,6 @@ public class CartController {
     @DeleteMapping("/clear")
     public void clearCart(@RequestHeader("X-User-Id") Long userId) {
         cartService.clearCart(userId);
-    }
-
-    @PostMapping("/checkout")
-    public CartResponseDto checkoutCart(@RequestHeader("X-User-Id") Long userId) {
-        return CartMapper.toCartResponse(cartService.checkoutCart(userId));
     }
 
 }

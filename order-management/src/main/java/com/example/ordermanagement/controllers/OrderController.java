@@ -28,7 +28,7 @@ public class OrderController {
         return OrderMapper.toPaymentOrderDto(order);
     }
 
-    @GetMapping
+    @GetMapping("/checkout")
     public List<OrderResponseDto> getOrders() {
         return orderService.getAllOrders()
                 .stream()
@@ -47,7 +47,7 @@ public class OrderController {
     @PostMapping
     public OrderResponseDto createOrder(@RequestBody CreateOrderRequestDto dto) {
         OrderAddress address = OrderMapper.toOrderAddress(dto.getDeliveryAddress());
-        Order order = orderService.createOrder(dto.getUserId(), dto.getCustomerEmail(), address);
+        Order order = orderService.createOrder(dto.getUserId(), dto.getCustomerName(), dto.getCustomerEmail(), address);
         return OrderMapper.toOrderResponse(order);
     }
 

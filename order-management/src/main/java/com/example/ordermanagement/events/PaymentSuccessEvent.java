@@ -1,4 +1,4 @@
-package com.example.paymentservice.events;
+package com.example.ordermanagement.events;
 
 import lombok.Data;
 

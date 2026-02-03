@@ -66,6 +66,7 @@ public class OrderMapper {
         if (order == null) return null;
         PaymentOrderDto dto = new PaymentOrderDto();
         dto.setCustomerEmail(order.getCustomerEmail());
+        dto.setCustomerName(order.getCustomerName());
         dto.setTotalAmount(order.getTotalAmount());
         dto.setOrderId(order.getId());
         List<PaymentOrderItemDto> items = order.getItems().stream().map(item -> {

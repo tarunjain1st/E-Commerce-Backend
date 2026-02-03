@@ -29,7 +29,7 @@ public class EmailTemplates {
 
 
 
-    public static String orderPlaced(String name, String orderId, Double amount) {
+    public static String orderPlaced(String name, Long orderId, Double amount) {
         String content = """
             <p>Hello <b>%s</b>,</p>
             <p>Thank you for shopping with <b>TarunKart</b>!</p>
