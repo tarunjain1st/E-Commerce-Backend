@@ -10,6 +10,12 @@ spring:
     redis:
       port: 6379
       host: localhost
+
+  elasticsearch:
+    uris: http://localhost:9200
+
+
+
 eureka:
   client:
     fetch-registry: true
@@ -21,3 +27,8 @@ eureka:
 
 server:
   port: 8085
+
+management:
+  health:
+    elasticsearch:
+      enabled: false
