@@ -4,15 +4,18 @@ import com.example.paymentservice.dtos.OrderDto;
 import com.example.paymentservice.dtos.PaymentResponse;
 import com.example.paymentservice.dtos.PaymentSession;
 import com.example.paymentservice.dtos.PaymentWebhookResponse;
-import com.example.paymentservice.models.Payment;
+import com.example.paymentservice.exceptions.PaymentGatewayUnavailableException;
 import com.example.paymentservice.models.PaymentStatus;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
-import com.stripe.model.*;
+import com.stripe.model.StripeObject;
 import com.stripe.model.checkout.Session;
+import com.stripe.model.Event;
+import com.stripe.model.EventDataObjectDeserializer;
 import com.stripe.net.Webhook;
 import com.stripe.param.PaymentLinkCreateParams;
 import com.stripe.param.PriceCreateParams;
+import com.stripe.model.Price;
 import com.stripe.param.checkout.SessionCreateParams;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -31,61 +34,63 @@ public class StripePaymentGateway implements IPaymentGateway {
     @Value("${stripe.webhook.secret}")
     private String webhookSecret;
 
-
-    private Price createPrice(Long amount, String productName){
+    // -----------------------------
+    // Direct payment link (intentional duplicate)
+    // -----------------------------
+    private Price createPrice(Long amount, String productName) {
         try {
-            PriceCreateParams params =
-                    PriceCreateParams.builder()
-                            .setCurrency("usd")
-                            .setUnitAmount(amount)
-                            .setRecurring(
-                                    PriceCreateParams.Recurring.builder()
-                                            .setInterval(PriceCreateParams.Recurring.Interval.MONTH)
-                                            .build()
-                            )
-                            .setProductData(
-                                    PriceCreateParams.ProductData.builder().setName(productName)
-                                            .build()
-                            )
-                            .build();
-            Price price = Price.create(params);
-            return price;
-        } catch(StripeException ex){
-            throw new RuntimeException(ex.getMessage());
+            PriceCreateParams params = PriceCreateParams.builder()
+                    .setCurrency("usd")
+                    .setUnitAmount(amount)
+                    .setRecurring(
+                            PriceCreateParams.Recurring.builder()
+                                    .setInterval(PriceCreateParams.Recurring.Interval.MONTH)
+                                    .build())
+                    .setProductData(
+                            PriceCreateParams.ProductData.builder()
+                                    .setName(productName)
+                                    .build())
+                    .build();
+            return Price.create(params);
+        } catch (StripeException ex) {
+            throw new PaymentGatewayUnavailableException("Stripe price creation failed: " + ex.getMessage(), ex);
         }
     }
 
     @Override
     public String initiatePayment(Long amount, String orderId, String name, String email, String phoneNumber, String description) {
         try {
-            Stripe.apiKey = this.stripeApiKey;
-
+            Stripe.apiKey = stripeApiKey;
             Price price = createPrice(amount, orderId);
 
-            PaymentLinkCreateParams params =
-                    PaymentLinkCreateParams.builder()
-                            .addLineItem(
-                                    PaymentLinkCreateParams.LineItem.builder()
-                                            .setPrice(price.getId())
-                                            .setQuantity(1L)
-                                            .build()
-                            ).setAfterCompletion(PaymentLinkCreateParams.AfterCompletion.builder()
-                                    .setType(PaymentLinkCreateParams.AfterCompletion.Type.REDIRECT)
-                                    .setRedirect(PaymentLinkCreateParams.AfterCompletion.Redirect.builder()
-                                            .setUrl("http://localhost.com/").build())
+            PaymentLinkCreateParams params = PaymentLinkCreateParams.builder()
+                    .addLineItem(
+                            PaymentLinkCreateParams.LineItem.builder()
+                                    .setPrice(price.getId())
+                                    .setQuantity(1L)
                                     .build())
-                            .build();
-            PaymentLink paymentLink = PaymentLink.create(params);
-            return paymentLink.getUrl();
-        }catch (StripeException exception) {
-            throw new RuntimeException(exception.getMessage());
+                    .setAfterCompletion(PaymentLinkCreateParams.AfterCompletion.builder()
+                            .setType(PaymentLinkCreateParams.AfterCompletion.Type.REDIRECT)
+                            .setRedirect(PaymentLinkCreateParams.AfterCompletion.Redirect.builder()
+                                    .setUrl("http://localhost.com/")
+                                    .build())
+                            .build())
+                    .build();
+
+            return com.stripe.model.PaymentLink.create(params).getUrl();
+        } catch (StripeException e) {
+            throw new PaymentGatewayUnavailableException("Stripe initiatePayment failed: " + e.getMessage(), e);
         }
     }
 
+    // -----------------------------
+    // Create payment session for orders
+    // -----------------------------
+    @Override
     public PaymentResponse createPayment(OrderDto orderDto) {
-        System.out.println("inside StripePaymentGateway createPayment");
         try {
             Stripe.apiKey = stripeApiKey;
+
             List<SessionCreateParams.LineItem> lineItems = orderDto.getItems().stream()
                     .map(item -> SessionCreateParams.LineItem.builder()
                             .setQuantity(item.getQuantity())
@@ -101,9 +106,7 @@ public class StripePaymentGateway implements IPaymentGateway {
 
             SessionCreateParams params = SessionCreateParams.builder()
                     .setMode(SessionCreateParams.Mode.PAYMENT)
-                    .setBillingAddressCollection(
-                            SessionCreateParams.BillingAddressCollection.REQUIRED
-                    )
+                    .setBillingAddressCollection(SessionCreateParams.BillingAddressCollection.REQUIRED)
                     .setSuccessUrl("http://localhost:8080/api/payments/success?session_id={CHECKOUT_SESSION_ID}&gateway=STRIPE")
                     .setCancelUrl("http://localhost:8080/api/payments/cancel?session_id={CHECKOUT_SESSION_ID}")
                     .addAllLineItem(lineItems)
@@ -113,13 +116,13 @@ public class StripePaymentGateway implements IPaymentGateway {
 
             Session session = Session.create(params);
 
-            PaymentResponse response = new  PaymentResponse();
+            PaymentResponse response = new PaymentResponse();
             response.setSessionId(session.getId());
             response.setCheckoutUrl(session.getUrl());
             return response;
 
         } catch (StripeException e) {
-            throw new RuntimeException("Stripe error: " + e.getMessage(), e);
+            throw new PaymentGatewayUnavailableException("Stripe createPayment failed: " + e.getMessage(), e);
         }
     }
 
@@ -128,72 +131,45 @@ public class StripePaymentGateway implements IPaymentGateway {
         try {
             Stripe.apiKey = stripeApiKey;
             Session session = Session.retrieve(sessionId);
-            return getPaymentSession(session);
+            return mapToPaymentSession(session);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch Stripe session: " + e.getMessage(), e);
+            throw new PaymentGatewayUnavailableException("Failed to fetch Stripe session: " + e.getMessage(), e);
         }
     }
 
     @Override
     public PaymentWebhookResponse parseWebhook(String payload, Map<String, String> headers) {
         try {
-            Event event = Webhook.constructEvent(
-                    payload,
-                    headers.get("Stripe-Signature"),
-                    webhookSecret
-            );
-
+            Event event = Webhook.constructEvent(payload, headers.get("Stripe-Signature"), webhookSecret);
             EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
-            StripeObject stripeObject = deserializer.getObject().orElse(null);
+            StripeObject stripeObject = deserializer.getObject().orElse(deserializer.deserializeUnsafe());
 
-            if (stripeObject == null) {
-                stripeObject = deserializer.deserializeUnsafe();
-            }
+            if (stripeObject == null) return null;
 
-            PaymentWebhookResponse result = new PaymentWebhookResponse();
+            PaymentWebhookResponse webhookResponse = new PaymentWebhookResponse();
             switch (event.getType()) {
-                // PAYMENT SUCCESS
                 case "checkout.session.completed" -> {
                     Session session = (Session) stripeObject;
-
-                    result.setPaymentReference(session.getId());
-                    result.setStatus(PaymentStatus.SUCCESS);
-                    return result;
+                    webhookResponse.setPaymentReference(session.getId());
+                    webhookResponse.setStatus(PaymentStatus.SUCCESS);
                 }
-
-                // PAYMENT FAILED, not working due to checkout-session
-//                case "payment_intent.payment_failed" -> {
-//                    PaymentIntent intent = (PaymentIntent) stripeObject;
-//                    result.setPaymentReference(intent.getId());
-//                    result.setStatus(PaymentStatus.FAILED);
-//                    result.setFailureReason("Payment failed at Stripe");
-//                    return result;
-//                }
-
-                // SESSION EXPIRED
                 case "checkout.session.expired" -> {
                     Session session = (Session) stripeObject;
-
-                    result.setPaymentReference(session.getId());
-                    result.setStatus(PaymentStatus.EXPIRED);
-                    return result;
+                    webhookResponse.setPaymentReference(session.getId());
+                    webhookResponse.setStatus(PaymentStatus.EXPIRED);
                 }
-
-
                 default -> {
-                    // ignore unrelated events safely
                     return null;
                 }
             }
+            return webhookResponse;
 
         } catch (StripeException e) {
-            throw new RuntimeException("Stripe webhook verification failed", e);
+            throw new PaymentGatewayUnavailableException("Stripe webhook verification failed", e);
         }
     }
 
-
-
-    private static PaymentSession getPaymentSession(Session session) {
+    private static PaymentSession mapToPaymentSession(Session session) {
         PaymentSession paymentSession = new PaymentSession();
         paymentSession.setSessionId(session.getId());
         paymentSession.setCheckoutUrl(session.getUrl());

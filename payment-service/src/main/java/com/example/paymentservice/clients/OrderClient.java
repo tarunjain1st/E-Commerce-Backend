@@ -1,6 +1,8 @@
 package com.example.paymentservice.clients;
 
 import com.example.paymentservice.dtos.OrderDto;
+import com.example.paymentservice.exceptions.OrderNotFoundException;
+import com.example.paymentservice.exceptions.PaymentGatewayUnavailableException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -10,16 +12,23 @@ import org.springframework.web.client.RestTemplate;
 public class OrderClient {
 
     @Autowired
-    RestTemplate restTemplate;
+    private RestTemplate restTemplate;
 
     public OrderDto getOrderById(Long orderId) {
         String url = "http://order-management/api/orders/{orderId}";
-        ResponseEntity<OrderDto> response = restTemplate.getForEntity(url, OrderDto.class, orderId);
-        System.out.println(response.getBody().getOrderId());
-        if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-            throw new RuntimeException("Failed to fetch order " + orderId + " from Order Service");
-        }
+        try {
+            ResponseEntity<OrderDto> response = restTemplate.getForEntity(url, OrderDto.class, orderId);
 
-        return response.getBody();
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                throw new OrderNotFoundException(orderId);
+            }
+
+            return response.getBody();
+
+        } catch (org.springframework.web.client.HttpClientErrorException.NotFound e) {
+            throw new OrderNotFoundException(orderId);
+        } catch (Exception e) {
+            throw new PaymentGatewayUnavailableException("Order Service unavailable", e);
+        }
     }
 }

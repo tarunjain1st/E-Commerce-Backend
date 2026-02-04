@@ -49,4 +49,8 @@ public class PaymentController {
 
         return ResponseEntity.ok("Thanks you for making the order !");
     }
+    @GetMapping("/cancel")
+    public ResponseEntity<String> paymentFailed(@RequestParam("session_id") String sessionId) {
+        return ResponseEntity.ok("Your order has been cancelled !");
+    }
 }

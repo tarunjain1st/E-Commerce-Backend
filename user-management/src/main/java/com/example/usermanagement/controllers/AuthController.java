@@ -18,7 +18,7 @@ public class AuthController {
     private IAuthService authService;
 
     @PostMapping("/signup")
-    public SignUpResponseDto signUp(@RequestBody SignUpRequestDto requestDto){
+    public ResponseEntity<SignUpResponseDto> signUp(@RequestBody SignUpRequestDto requestDto){
         User user = authService.signup(
                 requestDto.getFirstName(),
                 requestDto.getLastName(),
@@ -26,7 +26,7 @@ public class AuthController {
                 requestDto.getPassword(),
                 requestDto.getPhoneNumber()
         );
-        return from(user);
+        return ResponseEntity.status(HttpStatus.CREATED).body(from(user));
     }
 
     @PostMapping("/login")

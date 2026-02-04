@@ -1,6 +1,7 @@
 package com.example.cartservice.clients;
 
 import com.example.cartservice.dtos.ProductDto;
+import com.example.cartservice.exceptions.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -21,21 +22,28 @@ public class ProductClient {
     @Autowired
     private RestTemplate restTemplate;
 
-    public ProductDto getProductById(Long productId){
-
+    public ProductDto getProductById(Long productId) {
         String url = "http://product-catalog/api/products/{productId}";
 
         try {
-            ResponseEntity<ProductDto> response = restTemplate.getForEntity(url, ProductDto.class, productId);
-            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                throw new RuntimeException("Failed to fetch product " + productId);
-            }
-            return response.getBody();
-        } catch (RestClientException e) {
-            throw new RuntimeException("Product Service call failed for product " + productId, e);
-        }
+            ResponseEntity<ProductDto> response =
+                    restTemplate.getForEntity(url, ProductDto.class, productId);
 
+            return response.getBody();
+
+        } catch (org.springframework.web.client.HttpClientErrorException.NotFound e) {
+            throw new ProductNotFoundException(productId);
+
+        } catch (org.springframework.web.client.HttpClientErrorException.BadRequest e) {
+            throw new InvalidProductIdException(productId);
+
+        } catch (RestClientException e) {
+            throw new ProductServiceUnavailableException("Product Service unavailable", e);
+        }
     }
+
+
+
     //    public ProductDto getProductById(Long productId) {
     //        //Add your implementation here
     //        String url = "https://fakestoreapi.com/carts/{cartId}";

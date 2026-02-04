@@ -1,5 +1,6 @@
 package com.example.productcatalog.services;
 
+import com.example.productcatalog.exceptions.*;
 import com.example.productcatalog.repos.ProductSearchRepo;
 import com.example.productcatalog.search.ProductSearchDocument;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,10 +26,18 @@ public class ProductSearchService {
             String sortBy,
             String direction
     ) {
+        if (q == null || q.isEmpty()) {
+            throw new IllegalArgumentException("Keyword cannot be null or empty");
+        }
+
         Pageable pageable = buildPageable(page, size, sortBy, direction);
-        return repository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
-                q, q, pageable
-        );
+        Page<ProductSearchDocument> result = repository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(q, q, pageable);
+
+        if (result.isEmpty()) {
+            throw new ProductSearchEmptyException("No products found for keyword: " + q);
+        }
+
+        return result;
     }
 
     // -----------------------------
@@ -56,8 +65,11 @@ public class ProductSearchService {
                     word, word, pageable
             );
 
-            // merge results (you can also implement Set to avoid duplicates)
             result = mergePages(result, partial, pageable);
+        }
+
+        if (result.isEmpty()) {
+            throw new ProductSearchEmptyException("No products found for query: " + q);
         }
 
         return result;
@@ -79,7 +91,6 @@ public class ProductSearchService {
         return new PageImpl<>(combined.subList(start, end), pageable, combined.size());
     }
 
-
     // -----------------------------
     // 3️ Filter + sort + paging
     // -----------------------------
@@ -95,45 +106,36 @@ public class ProductSearchService {
     ) {
         Pageable pageable = buildPageable(page, size, sortBy, direction);
 
-        // 1️⃣ keyword + category + price
+        Page<ProductSearchDocument> result;
+
         if (q != null && !q.isEmpty() && category != null && !category.isEmpty()
                 && minPrice != null && maxPrice != null) {
-            return repository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCaseAndCategoryAndPriceBetween(
+            result = repository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCaseAndCategoryAndPriceBetween(
                     q, q, category, minPrice, maxPrice, pageable
             );
-        }
-
-        // 2️⃣ keyword + price only
-        if (q != null && !q.isEmpty() && minPrice != null && maxPrice != null) {
-            return repository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCaseAndPriceBetween(
+        } else if (q != null && !q.isEmpty() && minPrice != null && maxPrice != null) {
+            result = repository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCaseAndPriceBetween(
                     q, q, minPrice, maxPrice, pageable
             );
-        }
-
-        // 3️⃣ keyword + category only
-        if (q != null && !q.isEmpty() && category != null && !category.isEmpty()) {
-            return repository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCaseAndCategory(
+        } else if (q != null && !q.isEmpty() && category != null && !category.isEmpty()) {
+            result = repository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCaseAndCategory(
                     q, q, category, pageable
             );
+        } else if (category != null && !category.isEmpty() && minPrice != null && maxPrice != null) {
+            result = repository.findByCategoryAndPriceBetween(category, minPrice, maxPrice, pageable);
+        } else if (q != null && !q.isEmpty()) {
+            result = repository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(q, q, pageable);
+        } else if (category != null && !category.isEmpty()) {
+            result = repository.findByCategory(category, pageable);
+        } else {
+            result = repository.findAll(pageable);
         }
 
-        // 4️⃣ category + price only
-        if (category != null && !category.isEmpty() && minPrice != null && maxPrice != null) {
-            return repository.findByCategoryAndPriceBetween(category, minPrice, maxPrice, pageable);
+        if (result.isEmpty()) {
+            throw new ProductSearchEmptyException("No products found for given filters");
         }
 
-        // 5️⃣ keyword only
-        if (q != null && !q.isEmpty()) {
-            return repository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(q, q, pageable);
-        }
-
-        // 6️⃣ category only
-        if (category != null && !category.isEmpty()) {
-            return repository.findByCategory(category, pageable);
-        }
-
-        // fallback: everything paged
-        return repository.findAll(pageable);
+        return result;
     }
 
     // -----------------------------

@@ -13,9 +13,7 @@ public class ProductSearchController {
     @Autowired
     private ProductSearchService searchService;
 
-    // -----------------------------
-    // 1️ Keyword search (name OR description)
-    // -----------------------------
+    // -------------------- KEYWORD SEARCH --------------------
     @GetMapping
     public Page<ProductSearchDocument> search(
             @RequestParam String q,
@@ -27,21 +25,17 @@ public class ProductSearchController {
         return searchService.searchByKeyword(q, page, size, sortBy, direction);
     }
 
-    // -----------------------------
-    // 2️ Full text search (simple, paged)
-    // -----------------------------
+    // -------------------- FULL TEXT SEARCH --------------------
     @GetMapping("/fulltext")
-    public Page<ProductSearchDocument> fullText(
-            @RequestParam String q,
+    public Page<ProductSearchDocument> fullTextSearch(
+            @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
         return searchService.fullTextSearch(q, page, size);
     }
 
-    // -----------------------------
-    // 3️ Filter + sort + paging
-    // -----------------------------
+    // -------------------- FILTER + SORT --------------------
     @GetMapping("/filter")
     public Page<ProductSearchDocument> filter(
             @RequestParam(required = false) String q,
@@ -54,7 +48,8 @@ public class ProductSearchController {
             @RequestParam(defaultValue = "asc") String direction
     ) {
         return searchService.filterAndSort(
-                q, category, minPrice, maxPrice, page, size, sortBy, direction
+                q, category, minPrice, maxPrice,
+                page, size, sortBy, direction
         );
     }
 }

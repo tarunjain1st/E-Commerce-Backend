@@ -2,6 +2,7 @@ package com.example.cartservice.services;
 
 import com.example.cartservice.clients.ProductClient;
 import com.example.cartservice.dtos.ProductDto;
+import com.example.cartservice.exceptions.*;
 import com.example.cartservice.models.Cart;
 import com.example.cartservice.models.CartItem;
 import com.example.cartservice.models.CartStatus;
@@ -13,12 +14,11 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Optional;
 
 @Service
 public class StorageCartService implements ICartService {
 
-    private static final Duration CART_TTL = Duration.ofHours(1); // TTL as per PRD (can be configured)
+    private static final Duration CART_TTL = Duration.ofHours(1);
 
     @Autowired
     private CartRepository cartRepository;
@@ -35,6 +35,9 @@ public class StorageCartService implements ICartService {
 
     @Override
     public Cart getActiveCart(Long userId) {
+        if (userId == null || userId <= 0) {
+            throw new InvalidCartRequestException("Invalid user id");
+        }
 
         ValueOperations<String, Object> ops = redisTemplate.opsForValue();
         String key = redisKey(userId);
@@ -43,7 +46,7 @@ public class StorageCartService implements ICartService {
         Cart cart = (Cart) ops.get(key);
         if (cart != null) return cart;
 
-        // Fallback to MongoDB
+        // Fallback to DB
         cart = cartRepository.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
                 .orElseGet(() -> {
                     Cart newCart = new Cart();
@@ -54,17 +57,23 @@ public class StorageCartService implements ICartService {
                     return cartRepository.save(newCart);
                 });
 
-        // Cache in Redis with TTL
+        // Cache in Redis
         ops.set(key, cart, CART_TTL);
-
         return cart;
     }
 
     @Override
     public Cart addItemToCart(Long userId, Long productId, Integer quantity) {
+        if (quantity == null || quantity <= 0) {
+            throw new InvalidCartRequestException("Quantity must be greater than zero");
+        }
+        if (productId == null || productId <= 0) {
+            throw new InvalidCartRequestException("Invalid product id");
+        }
 
         Cart cart = getActiveCart(userId);
 
+        // Fetch product from Product Service (may throw ProductNotFoundException)
         ProductDto product = productClient.getProductById(productId);
 
         CartItem cartItem = cart.getItems().stream()
@@ -84,11 +93,7 @@ public class StorageCartService implements ICartService {
         }
 
         recalculateTotal(cart);
-
-        // Persist to MongoDB
         cartRepository.save(cart);
-
-        // Update Redis cache with TTL
         redisTemplate.opsForValue().set(redisKey(userId), cart, CART_TTL);
 
         return cart;
@@ -96,15 +101,14 @@ public class StorageCartService implements ICartService {
 
     @Override
     public Cart removeItemFromCart(Long userId, Long productId) {
-
         Cart cart = getActiveCart(userId);
 
         boolean removed = cart.getItems().removeIf(ci -> ci.getProductId().equals(productId));
-        if (!removed) throw new RuntimeException("Product not found in cart");
+        if (!removed) {
+            throw new CartItemNotFoundException(productId);
+        }
 
         recalculateTotal(cart);
-
-        // Persist & cache
         cartRepository.save(cart);
         redisTemplate.opsForValue().set(redisKey(userId), cart, CART_TTL);
 
@@ -113,36 +117,32 @@ public class StorageCartService implements ICartService {
 
     @Override
     public void clearCart(Long userId) {
-
         Cart cart = getActiveCart(userId);
+        if (cart.getItems().isEmpty()) {
+            throw new EmptyCartException(userId);
+        }
+
         cart.getItems().clear();
         cart.setTotalPrice(0.0);
 
-        // Persist & cache
         cartRepository.save(cart);
         redisTemplate.opsForValue().set(redisKey(userId), cart, CART_TTL);
     }
 
     public void handleOrderConfirmed(Long userId) {
-        Optional<Cart> cartOptional = cartRepository.findByUserIdAndStatus(userId, CartStatus.ACTIVE);
-        if (cartOptional.isEmpty()) {
-            return; // idempotent handling
-        }
-
-        Cart cart = cartOptional.get();
-
-        cart.setStatus(CartStatus.CHECKED_OUT);
-        //cart.getItems().clear();
-        cartRepository.save(cart);
-        redisTemplate.delete(redisKey(userId));
+        cartRepository.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
+                .ifPresent(cart -> {
+                    cart.setStatus(CartStatus.CHECKED_OUT);
+                    cartRepository.save(cart);
+                    redisTemplate.delete(redisKey(userId));
+                });
     }
-    /* ================= helper ================= */
 
+    /* ---------- Helper ---------- */
     private void recalculateTotal(Cart cart) {
         double total = cart.getItems().stream()
                 .mapToDouble(i -> i.getPrice() * i.getQuantity())
                 .sum();
         cart.setTotalPrice(total);
     }
-
 }
