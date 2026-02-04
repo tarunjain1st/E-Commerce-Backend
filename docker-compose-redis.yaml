@@ -1,0 +1,29 @@
+services:
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - redis-net
+    restart: always
+
+  redis-gui:
+    image: redislabs/redisinsight:latest
+    container_name: redis-gui
+    ports:
+      - "8010:5540"
+    networks:
+      - redis-net
+    restart: always
+
+networks:
+  redis-net:
+    driver: bridge
+
+
+# docker compose -p redis -f docker-compose-redis.yaml up --build -d
+# docker-compose -p redis -f docker-compose-redis.yaml down

@@ -25,7 +25,7 @@ public class JwtAuthGlobalFilter implements GlobalFilter {
         String path = exchange.getRequest().getPath().value();
 
         // Skip auth paths
-        if (path.startsWith("/auth/")) {
+        if (path.startsWith("/api/auth/")) {
             return chain.filter(exchange);
         }
 
