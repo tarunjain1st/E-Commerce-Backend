@@ -9,6 +9,7 @@ A production-grade e-commerce backend system built with microservices architectu
 - [Overview](#🎯-overview)
 - [Architecture](#🏗️-architecture)
 - [Technology Stack](#🚀-technology-stack)
+- [Project Structure](#📝-project-structure)
 - [Microservices](#🎯-microservices)
 - [Prerequisites](#📦-prerequisites)
 - [Installation & Setup](#🔧-installation--setup)
@@ -17,7 +18,9 @@ A production-grade e-commerce backend system built with microservices architectu
 - [API Documentation](#📚-api-documentation)
 - [Email Configuration](#📧-email-configuration)
 - [Payment Gateway Setup](#💳-payment-gateway-setup)
-- [Troubleshooting](#🐛-troubleshooting)
+- [Event-Driven Architecture](#🔄-event-driven-architecture)
+- [Performance Optimizations](#📊-performance-optimizations)
+- [Acknowledgments](#🙏-acknowledgments)
 
 ---
 
@@ -65,6 +68,42 @@ This e-commerce backend implements a complete microservices architecture with:
 | Security | JWT with RSA encryption |
 | Payment Gateways | Stripe, Razorpay |
 | Email | JavaMail API |
+
+---
+
+## 📝 Project Structure
+
+```
+E-Commerce-Backend/
+│
+├── api-gateway              # Routing, JWT auth
+├── discovery-server         # Service discovery
+├── user-management          # Users, auth, JWT
+├── product-catalog          # Products, inventory, search
+├── cart-service             # Shopping cart
+├── order-management         # Orders & orchestration
+├── payment-service          # Payments
+├── notification-service     # Email notifications
+│
+├── docker-compose-kafka.yaml
+├── docker-compose-redis.yaml
+├── docker-compose-elasticsearch.yaml
+├── pom.xml
+└── README.md
+
+```
+
+### Key Components
+
+**Controllers**: Handle HTTP requests and responses  
+**Services**: Business logic layer  
+**Models**: Database entities (JPA/MongoDB)  
+**Repositories**: Data access layer  
+**DTOs**: Data Transfer Objects for API communication  
+**Events**: Kafka event models for inter-service communication  
+**Clients**: REST clients for synchronous service-to-service calls  
+**Configs**: Configuration classes for Kafka, Redis, MongoDB, etc.  
+**Exceptions**: Custom exception classes
 
 ---
 
@@ -697,42 +736,6 @@ payment:
 | **MongoDB** | Flexible cart storage | 60-65% faster cart ops |
 | **Elasticsearch** | Fast product search | 90-95% faster searches |
 | **Kafka** | Non-blocking operations | 70-95% faster async flows |
-
----
-
-## 📝 Project Structure
-
-```
-E-Commerce-Backend/
-│
-├── api-gateway              # Routing, JWT auth
-├── discovery-server         # Service discovery
-├── user-management          # Users, auth, JWT
-├── product-catalog          # Products, inventory, search
-├── cart-service             # Shopping cart
-├── order-management         # Orders & orchestration
-├── payment-service          # Payments
-├── notification-service     # Email notifications
-│
-├── docker-compose-kafka.yaml
-├── docker-compose-redis.yaml
-├── docker-compose-elasticsearch.yaml
-├── pom.xml
-└── README.md
-
-```
-
-### Key Components
-
-**Controllers**: Handle HTTP requests and responses  
-**Services**: Business logic layer  
-**Models**: Database entities (JPA/MongoDB)  
-**Repositories**: Data access layer  
-**DTOs**: Data Transfer Objects for API communication  
-**Events**: Kafka event models for inter-service communication  
-**Clients**: REST clients for synchronous service-to-service calls  
-**Configs**: Configuration classes for Kafka, Redis, MongoDB, etc.  
-**Exceptions**: Custom exception classes
 
 ---
 
