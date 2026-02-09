@@ -1,10 +1,6 @@
 package com.example.usermanagement.controllers;
 
-import com.example.usermanagement.dtos.SignInRequestDto;
-import com.example.usermanagement.dtos.SignUpRequestDto;
-import com.example.usermanagement.dtos.UserDto;
-import com.example.usermanagement.dtos.ValidateTokenRequest;
-import com.example.usermanagement.exceptions.UnauthorizedException;
+import com.example.usermanagement.dtos.*;
 import com.example.usermanagement.models.User;
 import com.example.usermanagement.services.IAuthService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,55 +8,71 @@ import org.springframework.data.util.Pair;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/auth")
 public class AuthController {
 
     @Autowired
     private IAuthService authService;
 
     @PostMapping("/signup")
-    public UserDto signUp(@RequestBody SignUpRequestDto requestDto){
-        User user = authService.signup(requestDto.getName(), requestDto.getEmail(), requestDto.getPassword() ,requestDto.getPhoneNumber());
-        return from(user);
+    public ResponseEntity<SignUpResponseDto> signUp(@RequestBody SignUpRequestDto requestDto){
+        User user = authService.signup(
+                requestDto.getFirstName(),
+                requestDto.getLastName(),
+                requestDto.getEmail(),
+                requestDto.getPassword(),
+                requestDto.getPhoneNumber()
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(from(user));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<UserDto> signIn(@RequestBody SignInRequestDto requestDto){
-        Pair<User, String> response = authService.login(requestDto.getEmail(), requestDto.getPassword());
-        UserDto userDto = from(response.getFirst());
-        String token = response.getSecond();
+    public ResponseEntity<SignInResponseDto> signIn(@RequestBody SignInRequestDto requestDto){
+        Pair<Long, String> userInfo = authService.login(requestDto.getEmail(), requestDto.getPassword());
         HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.SET_COOKIE, token);
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .headers(headers)
-                .body(userDto);
+        headers.set(HttpHeaders.AUTHORIZATION, "Bearer " + userInfo.getSecond());
+        return ResponseEntity.ok().headers(headers).body(from(userInfo));
     }
 
-    @PostMapping("/validateToken")
-    public Boolean validateToken(@RequestBody ValidateTokenRequest validateTokenRequest){
-        Boolean result = authService.validateToken(validateTokenRequest.getToken(), validateTokenRequest.getUserId());
-        if(!result){
-            throw new UnauthorizedException("Session expired! please login again....");
-        }
-        return true;
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        authService.logout(token);
+        return ResponseEntity.ok().build();
     }
 
-    //TODO: wrapper for Logout & ForgetPassword api
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@RequestBody ForgotPasswordRequestDto requestDto) {
+        authService.forgetPassword(requestDto.getEmail());
+        return ResponseEntity.ok().build();
+    }
 
-    UserDto from(User user){
-        UserDto userDto = new UserDto();
-        userDto.setId(user.getId());
-        userDto.setName(user.getName());
-        userDto.setEmail(user.getEmail());
-        return userDto;
+    @GetMapping("/reset-password/confirm")
+    public ResponseEntity<String> resetPasswordResponse(@RequestParam String token) {
+        return ResponseEntity.ok("you can use this token to reset your password: " + token);
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<Void> changePassword(@RequestBody ChangePasswordRequestDto requestDto) {
+        authService.changePassword(requestDto.getToken(), requestDto.getNewPassword());
+        return ResponseEntity.noContent().build();
+    }
+
+
+    SignUpResponseDto from(User user){
+        SignUpResponseDto signUpResponseDto = new SignUpResponseDto();
+        signUpResponseDto.setId(user.getId());
+        signUpResponseDto.setName(user.getFirstName() +  " " + user.getLastName());
+        signUpResponseDto.setEmail(user.getEmail());
+        return signUpResponseDto;
+    }
+    SignInResponseDto from(Pair<Long, String> userInfo){
+        SignInResponseDto signInResponseDto = new SignInResponseDto();
+        signInResponseDto.setUserId(userInfo.getFirst());
+        signInResponseDto.setAccessToken(userInfo.getSecond());
+        return signInResponseDto;
     }
 }

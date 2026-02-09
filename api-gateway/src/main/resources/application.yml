@@ -1,0 +1,65 @@
+spring:
+  main:
+    web-application-type: reactive
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: user-management-auth
+          uri: lb://USER-MANAGEMENT
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=0
+            # NO JWT filter here (public)
+
+        - id: user-management-users
+          uri: lb://USER-MANAGEMENT
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - StripPrefix=0
+            # JWT REQUIRED
+
+        - id: cart-service
+          uri: lb://CART-SERVICE
+          predicates:
+            - Path=/api/carts/**
+          filters:
+            - StripPrefix=0
+            # JWT REQUIRED
+
+        - id: order-management
+          uri: lb://ORDER-MANAGEMENT
+          predicates:
+            - Path=/api/orders/**
+          filters:
+            - StripPrefix=0
+            # JWT REQUIRED
+
+        - id: payment-service
+          uri: lb://PAYMENT-SERVICE
+          predicates:
+            - Path=/api/payments/**
+          filters:
+            - StripPrefix=0
+            # JWT REQUIRED
+
+        - id: product-catalog
+          uri: lb://PRODUCT-CATALOG
+          predicates:
+            - Path=/api/products/**
+          filters:
+            - StripPrefix=0
+            # JWT REQUIRED
+server:
+  port: 8080
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true

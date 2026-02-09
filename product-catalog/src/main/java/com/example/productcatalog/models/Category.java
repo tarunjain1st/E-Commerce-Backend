@@ -14,10 +14,9 @@ import java.util.List;
 public class Category extends BaseModel{
     private String name;
     private String description;
-
+    private Boolean isPremium;
     @OneToMany(mappedBy = "category")
     private List<Product> products;
-
     public Category() {
         this.products = new ArrayList<>();
     }

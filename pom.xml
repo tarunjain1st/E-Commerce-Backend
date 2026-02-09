@@ -17,6 +17,13 @@
 
     <modules>
         <module>product-catalog</module>
+        <module>user-management</module>
+        <module>discovery-server</module>
+        <module>payment-service</module>
+        <module>notification-service</module>
+        <module>order-management</module>
+        <module>cart-service</module>
+        <module>api-gateway</module>
     </modules>
 
     <dependencyManagement>

@@ -2,6 +2,7 @@ package com.example.productcatalog.services;
 
 
 import com.example.productcatalog.models.Product;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
 
